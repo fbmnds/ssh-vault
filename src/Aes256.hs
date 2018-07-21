@@ -1,6 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE GADTs #-}
+module Aes256 () where
 
 import           Crypto.Cipher.AES (AES256)
 import           Crypto.Cipher.Types (BlockCipher(..), Cipher(..), nullIV, KeySizeSpecifier(..), IV, makeIV)
@@ -58,9 +59,10 @@ exampleAES256 msg = do
           putStrLn $ "Message after decryption: " ++ show dMsg
 
 
-main :: IO ()
-main = do 
-  exampleAES256 $ intercalate "\n" [ 
+mainAes :: IO ()
+mainAes = 
+  exampleAES256 $ 
+  intercalate "\n" [ 
       "This is some text which we escape" 
     , "and unescape to keep writing" 
     ]

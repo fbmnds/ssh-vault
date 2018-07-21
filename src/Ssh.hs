@@ -1,12 +1,12 @@
 -- :set -XOverloadedStrings
 {-# LANGUAGE OverloadedStrings #-}
+module Ssh (ssh) where
 
-import Turtle
 import System.Environment (lookupEnv)
 import System.IO (appendFile)
 import Data.Maybe (fromMaybe)
 import Data.Text (unpack)
-
+import Turtle
   
 
 uploadKey :: Text -> Text -> Text -> Text -> Text -> Text
@@ -27,8 +27,8 @@ uploadKey hm newKey currKey id' box = format (s % s% s) p1 p2 p3
                     ) id' box id'
 
 
-main :: IO ExitCode
-main = do
+ssh :: IO ExitCode
+ssh = do
     let newKey  = "NEWKEY"
     let currKey = "id_rsa2048"
     let id'     = "root"

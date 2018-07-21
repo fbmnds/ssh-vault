@@ -1,20 +1,25 @@
-name:                ssh-vault
-version:             0.1.0.0
--- synopsis:
--- description:
-homepage:            https://github.com/githubuser/ssh-vault#readme
-license:             BSD3
-license-file:        LICENSE
-author:              Author name here
-maintainer:          example@example.com
-copyright:           2018 Author name here
-category:            Web
-build-type:          Simple
-cabal-version:       >=1.10
-extra-source-files:  README.md
+cabal-version: >=1.10
+name: ssh-vault
+version: 0.1.0.0
+license: BSD3
+license-file: LICENSE
+copyright: 2018 Author name here
+maintainer: example@example.com
+author: Author name here
+homepage: https://github.com/githubuser/ssh-vault#readme
+category: Web
+build-type: Simple
+extra-source-files:
+    README.md
 
 executable ssh-vault
-  hs-source-dirs:      src
-  main-is:             Main.hs
-  default-language:    Haskell2010
-  build-depends:       base >= 4.7 && < 5
+    main-is: Main.hs
+    hs-source-dirs: src
+    default-language: Haskell2010
+    build-depends:
+        base >=4.7 && <5,
+        turtle -any,
+        cryptonite >=0.25,
+        text -any,
+        bytestring -any,
+        memory >= 0.14.14
