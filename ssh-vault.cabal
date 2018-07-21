@@ -22,4 +22,5 @@ executable ssh-vault
         cryptonite >=0.25,
         text -any,
         bytestring -any,
-        memory >= 0.14.14
+        memory >=0.14.14,
+        utf8-string -any
