@@ -5,17 +5,7 @@
 module Main where
 
 import Workflows (ssh)
-import Vaults 
-  ( Vault
-  , VaultEntry
-  , Secrets
-  , getVaultFile'
-  , putVaultFile'
-  , getVaultFile
-  , putVaultFile       
-  , encryptVault
-  , decryptVault
-  )
+import Vaults (Vault, VaultEntry, Secrets, getVaultFile', putVaultFile', getVaultFile, putVaultFile, encryptVault, decryptVault)
 import Turtle (ExitCode, printf, fromString, liftIO, readline)
 import Turtle.Format
 import Turtle.Prelude (stdout, input, shell)
@@ -33,7 +23,8 @@ import Data.Text(Text, pack)
 import GHC.Generics
 
 data Secrets =
-  Secrets { key_secret :: Text
+  Secrets { user :: Text
+          , key_secret :: Text
           , key_file :: Text
           } deriving (Show, Generic)
 
@@ -81,7 +72,7 @@ main = do
 --  stdout . input $ fromText "/home/fb/.ssh/ssh-vault-tv.json"
 
 
-  let ss = Secrets (Data.Text.pack "p") (Data.Text.pack "q") 
+  let ss = Secrets (Data.Text.pack "p") (Data.Text.pack "q") (Data.Text.pack "r") 
   let vs = VaultEntry 
         [Data.Text.pack "p", Data.Text.pack "p"] 
         (Data.Text.pack "h") 
@@ -89,23 +80,25 @@ main = do
         (Data.Text.pack "4") 
         (Data.Text.pack "6") 
         22 
-        [ss, ss]   
+        [ss, ss, ss]   
   printf s . Data.Text.pack . Data.ByteString.Lazy.Char8.unpack $ encodePretty vs
   nl
-  let vvs = Main.Vault [vs] 
+  let vvs = Vault [vs] 
   printf s . Data.Text.pack . Data.ByteString.Lazy.Char8.unpack $ encodePretty vvs
   nl
 
 
-  let (v :: Main.Vault) = fromMaybe (error "failed to parse Vault decode $ encode") . decode $ encode vvs
+  let (v :: Vaults.Vault) = fromMaybe (error "failed to parse Vault decode $ encode") . decode $ encode vvs
   printf s . Data.Text.pack . Data.ByteString.Lazy.Char8.unpack $ encodePretty v
   nl 
 
 
-  let (vf :: Main.Vault) = fromMaybe (error "failed to parse Vault bytes from file") $ decode sv
+  let (vf :: Vaults.Vault) = fromMaybe (error "failed to parse Vault bytes from file") $ decode sv
   printf s . Data.Text.pack . Data.ByteString.Lazy.Char8.unpack $ encodePretty vf
   nl 
 
+  let evf = encryptVault "undefined" vf
+  --_ <- putVaultFile "/home/fb/.ssh/ssh-vault-vf.json" ( 
 
   done
 
@@ -116,7 +109,7 @@ main = do
   --       Just s' -> lineToText s'
 
 
-  --_ <- putVaultFile "/home/fb/.ssh/ssh-vault-etv.json" tv  
+ 
 
   --let detv = decryptVault passwd tv
 

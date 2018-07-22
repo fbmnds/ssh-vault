@@ -30,7 +30,8 @@ import Turtle (ExitCode)
 
 
 data Secrets =
-  Secrets { key_secret :: Text
+  Secrets { user :: Text
+          , key_secret :: Text
           , key_file :: Text
           } deriving (Show, Generic)
 
