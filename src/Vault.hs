@@ -1,5 +1,5 @@
 {-# LANGUAGE DeriveGeneric #-}
-module Aes256 
+module Vault 
   ( 
       getVaultFile
     , putVaultFile  

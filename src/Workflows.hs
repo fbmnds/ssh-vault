@@ -1,6 +1,6 @@
 -- :set -XOverloadedStrings
 {-# LANGUAGE OverloadedStrings #-}
-module Ssh (ssh) where
+module Workflows (ssh) where
 
 import System.Environment (lookupEnv)
 import System.IO (appendFile)

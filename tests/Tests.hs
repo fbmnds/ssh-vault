@@ -1,7 +1,7 @@
-module Main where
+module Tests where
 
-import Workflows (ssh)
-import Vault (getVaultFile, putVaultFile)
+import Ssh (ssh)
+import Aes256 (getVaultFile, putVaultFile)
 import Turtle (printf, fromString)
 import Turtle.Format
 import Turtle.Prelude (stdout, input)
