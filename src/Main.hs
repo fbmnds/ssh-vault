@@ -97,8 +97,13 @@ main = do
   nl
 
 
-  let (v :: [Main.Vault]) = fromMaybe (error "failed to parse Vault") . decode $ encode vvs
-  printf w v
+  let (v :: Main.Vault) = fromMaybe (error "failed to parse Vault decode $ encode") . decode $ encode vvs
+  printf s . Data.Text.pack . Data.ByteString.Lazy.Char8.unpack $ encodePretty v
+  nl 
+
+
+  let (vf :: Main.Vault) = fromMaybe (error "failed to parse Vault bytes from file") $ decode sv
+  printf s . Data.Text.pack . Data.ByteString.Lazy.Char8.unpack $ encodePretty vf
   nl 
 
 
