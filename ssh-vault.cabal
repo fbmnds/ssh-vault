@@ -19,10 +19,11 @@ executable ssh-vault
     build-depends:
         base >=4.7 && <5,
         turtle -any,
-        crypto-simple >= 0.1.0.0,
+        crypto-simple >=0.1.0.0,
         text -any,
         bytestring -any,
         memory >=0.14.14,
         utf8-string -any,
-        aeson >= 1.3.1.1,
-        aeson-pretty >= 0.8.7
+        aeson >=1.3.1.1,
+        aeson-pretty >=0.8.7,
+        cryptonite -any

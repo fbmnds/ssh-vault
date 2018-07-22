@@ -6,7 +6,7 @@ module Main where
 
 import Workflows (ssh)
 import Vaults (Vault, VaultEntry, Secrets, getVaultFile', putVaultFile', getVaultFile, putVaultFile, encryptVault, decryptVault)
-import Turtle (ExitCode, printf, fromString, liftIO, readline)
+import Turtle (ExitCode, printf, fromString, liftIO, readline, view)
 import Turtle.Format
 import Turtle.Prelude (stdout, input, shell)
 import Turtle.Line (lineToText)
@@ -63,12 +63,12 @@ main :: IO ExitCode
 main = do
   sv <- getVaultFile' "/home/fb/.ssh/ssh-vault.json"
 --  printf s . fromText $ Data.ByteText.Lazy.Char8.unpack sv
-  _ <- putVaultFile' "/home/fb/.ssh/ssh-vault-sv.json" sv
+--  _ <- putVaultFile' "/home/fb/.ssh/ssh-vault-sv.json" sv
 --  stdout . input $ fromText "/home/fb/.ssh/ssh-vault-sv.json"
 
   tv <- getVaultFile "/home/fb/.ssh/ssh-vault.json"
 --  printf s tv
-  _ <- putVaultFile "/home/fb/.ssh/ssh-vault-tv.json" tv
+  _ <- putVaultFile' "/home/fb/.ssh/ssh-vault-tv.json" tv
 --  stdout . input $ fromText "/home/fb/.ssh/ssh-vault-tv.json"
 
 
@@ -97,16 +97,28 @@ main = do
   printf s . Data.Text.pack . Data.ByteString.Lazy.Char8.unpack $ encodePretty vf
   nl 
 
-  let evf = encryptVault "undefined" vf
-  --_ <- putVaultFile "/home/fb/.ssh/ssh-vault-vf.json" ( 
+
+  view (return "[?] enter password > ")
+  passw' <- readline
+  let passwd = lineToText . fromMaybe (error "failed to parse password") $ passw'
+  nl
+    -- case passw' of
+    --     Nothing -> "123456789"
+    --     Just s' -> lineToText s'
+
+
+  -- _ <- putVaultFile' "/home/fb/.ssh/ssh-vault-evf.json" (Data.Text.pack $ Data.ByteString.Lazy.Char8.unpack evf) 
+  _ <- putVaultFile "/home/fb/.ssh/ssh-vault-enc.json" passwd vf
+
+
+  vvf <- decryptVault passwd "/home/fb/.ssh/ssh-vault-enc.json"
+  printf s . Data.Text.pack . Data.ByteString.Lazy.Char8.unpack $ encodePretty vvf
+  nl 
+
 
   done
 
-  --printf s "[?] enter password > "
-  -- passw' <- readline
-  -- let passwd = case passw' of
-  --       Nothing -> ""
-  --       Just s' -> lineToText s'
+
 
 
  

@@ -15,18 +15,26 @@ module Vaults
   ) 
 where
 
-import Crypto.Simple.CBC (encrypt, decrypt)
+import Crypto.Simple.CTR (encrypt, decrypt)
 
+import Crypto.Hash (hash, SHA256 (..), Digest)
+import Crypto.Hash.Algorithms
+
+import qualified Data.ByteString as BS  
 import Data.ByteString.Lazy (ByteString)
 import Data.ByteString.Lazy.Char8 (pack, unpack)
+import Data.ByteString.Char8 (pack, unpack)
+import Data.ByteString.UTF8 (fromString)
 import Data.Text (Text, pack, unpack)
+import Data.Maybe (fromMaybe)
+import Data.ByteArray (convert)
 
 import System.IO (readFile, writeFile)
 
 import Data.Aeson
 import GHC.Generics
 
-import Turtle (ExitCode)
+import Turtle (ExitCode, w, printf)
 
 
 data Secrets =
@@ -59,14 +67,29 @@ instance FromJSON Vault
 instance ToJSON Vault
 
 
+-- genSHA256' :: Text -> Digest SHA256
+-- genSHA256' key = 
+--   hash . Prelude.head $ fmap Data.ByteString.UTF8.fromString [Data.Text.unpack key] 
+
+genSHA256 :: Text -> String
+genSHA256 key = 
+  let h :: Digest SHA256
+      h = hash . Prelude.head $ fmap Data.ByteString.UTF8.fromString [Data.Text.unpack key] in
+  show h --genSHA256' key 
+   
+
+genAESKey :: Text -> BS.ByteString
+genAESKey key = Data.ByteString.Char8.pack . take 31 $ genSHA256 key
+
+
 getVaultFile :: String -> IO Text
 getVaultFile fn = do   
   contents <- readFile fn      
   return $ Data.Text.pack contents
 
 
-putVaultFile :: String -> Text -> IO ()
-putVaultFile fn vaultbs = 
+putVaultFile' :: String -> Text -> IO ()
+putVaultFile' fn vaultbs = 
   writeFile fn (Data.Text.unpack vaultbs)
 
 
@@ -76,16 +99,27 @@ getVaultFile' fn = do
   return $ Data.ByteString.Lazy.Char8.pack contents
 
 
-putVaultFile' :: String -> ByteString -> IO ()
-putVaultFile' fn vaultbs = 
-  writeFile fn (Data.ByteString.Lazy.Char8.unpack vaultbs)
-  
+putVaultFile :: String -> Text -> Vault -> IO ()
+putVaultFile fn key vault =  do
+  bs <- encryptVault key vault
+  writeFile fn $ Data.ByteString.Char8.unpack bs
 
-decryptVault :: Text -> ByteString -> Vault
-decryptVault key vaultbs = undefined
 
-encryptVault :: Text -> Vault -> ByteString
-encryptVault key vault = undefined
+decryptVault :: Text -> String-> IO Vault
+decryptVault key fn = do
+  let k' = genAESKey key
+  v <- getVaultFile fn
+  v' <- Crypto.Simple.CTR.decrypt k' . Data.ByteString.Char8.pack $ Data.Text.unpack v
+  let v'' = Data.ByteString.Lazy.Char8.pack $ show v'
+  printf w v''
+  return . fromMaybe (error "failed to decrypt vault") $ decode v''
+ 
+
+encryptVault :: Text -> Vault -> IO BS.ByteString
+encryptVault key vault = do 
+  let k' = genAESKey key
+      v' = Data.ByteString.Char8.pack . Data.ByteString.Lazy.Char8.unpack $ encode vault
+  Crypto.Simple.CTR.encrypt k' v'
 
 
 -- > import Crypto.Simple.CBC (encrypt, decrypt) 
