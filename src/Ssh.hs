@@ -4,9 +4,13 @@ module Ssh (ssh) where
 
 import System.Environment (lookupEnv)
 import System.IO (appendFile)
+
 import Data.Maybe (fromMaybe)
-import Data.Text (unpack)
-import Turtle
+import Data.Text (Text, unpack)
+
+import Turtle (ExitCode, die, fromString, format, liftIO, readline, shell, empty, proc)
+import Turtle.Format (Format, printf, (%), s)
+import Turtle.Line (lineToText)
   
 
 uploadKey :: Text -> Text -> Text -> Text -> Text -> Text
