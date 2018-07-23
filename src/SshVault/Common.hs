@@ -12,6 +12,9 @@ import Control.Exception(bracket_)
 import System.IO
 
 
+
+
+
 getKeyPhrase :: IO BS.ByteString
 getKeyPhrase = do
   old <- hGetEcho stdin

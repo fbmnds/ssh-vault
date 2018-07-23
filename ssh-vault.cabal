@@ -20,6 +20,7 @@ library
           SshVault.Common
         , SshVault.Vault
         , SshVault.Workflows
+        , SshVault.SBytes
     build-depends:
         base >=4.7 && <5,
         turtle -any,
@@ -52,6 +53,7 @@ executable ssh-vault
           SshVault.Common
         , SshVault.Vault
         , SshVault.Workflows    
+        , SshVault.SBytes
 
 
 Test-Suite ssh-vault-tests
@@ -62,6 +64,8 @@ Test-Suite ssh-vault-tests
           SshVault.Common
         , SshVault.Vault
         , SshVault.Workflows
+        , SshVault.SBytes
+        , SshVault.SBytes
   Build-Depends:     
         ssh-vault,
         base >=4.7 && <5,

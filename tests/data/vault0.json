@@ -1,0 +1,66 @@
+{
+	"vault": [
+		{
+			"users": ["root","a"],
+			"host": "box1",
+			"host_key": "",
+			"ip4": "",
+			"ip6": "",
+			"port": 22,
+			"secrets" : [ 
+				{   "user": "root",
+					"key_secret": "root*box1***",
+					"key_file": "/root/.ssh/id_box1"			
+				},
+				{   "user": "a", 
+					"key_secret": "a*box1******",
+					"key_file": "/home/a/.ssh/id_box1"			
+				}	
+			]
+		},
+		{
+			"users": ["root","b"],
+			"host": "box2",
+			"host_key": "",
+			"ip4": "",
+			"ip6": "",
+			"port": 22,
+			"secrets" : [
+				{   "user": "root",
+					"key_secret": "root*box2***",
+					"key_file": "/root/.ssh/id_box2"			
+				},
+				{   "user": "b", 
+					"key_secret": "b*box2******",
+					"key_file": "/home/b/.ssh/id_box2"			
+				}	
+			]
+		},
+		{
+			"users": ["root","c","d","e"],
+			"host": "box3",
+			"host_key": "",
+			"ip4": "",
+			"ip6": "",
+			"port": 22,
+			"secrets" : [
+				{   "user": "root",
+					"key_secret": "root*box2***",
+					"key_file": "/root/.ssh/id_2048"			
+				},
+				{   "user": "c", 
+					"key_secret": "c*box3******",
+					"key_file": "/home/c/.ssh/id_2048"			
+				},
+				{   "user": "d",
+					"key_secret": "d*box3******",
+					"key_file": "/home/d/.ssh/id_2048"			
+				},
+				{   "user": "e",
+					"key_secret": "e*box3******",
+					"key_file": "/home/e/.ssh/id_2048"			
+				}		
+			]
+		}
+	]		
+}

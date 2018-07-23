@@ -18,10 +18,13 @@ import SshVault.Vault
 --    , encryptVault
     , decryptVault
     )
+import SshVault.SBytes
 --import SshVault.Common (getKeyPhrase)
+
 import Turtle 
     ( ExitCode
     , printf
+    ,
 --    , fromString
 --    , liftIO
 --    , readline
@@ -36,7 +39,8 @@ import Turtle.Prelude
     )
 --import Turtle.Line (lineToText)
 
-
+import Data.ByteArray (eq, convert)
+import Data.ByteString
 --import Data.ByteString.Lazy (ByteString)
 import Data.ByteString.Lazy.Char8 (unpack)
 import Data.Maybe (fromMaybe)
@@ -45,8 +49,8 @@ import Data.Aeson
 import Data.Aeson.Encode.Pretty
 import Data.Text
     (
---      Text, 
-    pack
+      Text
+    , pack
     )
 
 --import GHC.Generics
@@ -59,10 +63,56 @@ done :: IO ExitCode
 done = shell "" ""
 
 
+s0 :: [Secrets]
+s0 = 
+  [
+      Secrets
+      "root"
+      "root*box1***"
+      "/root/.ssh/id_box1"
+    , Secrets
+      "a"
+      "a*box1******"
+      "/home/a/.ssh/id_box1"
+  ]    
+
+ve0 :: VaultEntry
+ve0 = VaultEntry 
+        ["root","a"] 
+        "box1"
+        ""
+        ""
+        ""
+        22
+        s0
+
+
+textSBytes :: () -> IO ()
+textSBytes _ = do
+  let (t :: Data.Text.Text) = "äöüß!\"§$%&/"
+      t' = toSBytes t
+      (t'' :: Data.ByteString.ByteString) = convert t'
+  nl
+  printf s t
+  nl
+  printf w $ t'' `eq` t'
+  nl
+
+readUnencryptedVaultFromJSON :: () -> IO ()
+readUnencryptedVaultFromJSON _ = do
+  -- read file to scrubbed bytes
+  
+  -- decode JSON
+  -- verify first element
+  nl
+  nl
+
 
 
 test :: IO ExitCode
 test = do
+  textSBytes () 
+
   sv <- getVaultFile' "/home/fb/.ssh/ssh-vault.json"
 --  printf s . fromText $ Data.ByteText.Lazy.Char8.unpack sv
 --  _ <- putVaultFile' "/home/fb/.ssh/ssh-vault-sv.json" sv
