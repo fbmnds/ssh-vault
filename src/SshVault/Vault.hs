@@ -2,17 +2,17 @@
 --{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE DeriveGeneric #-}
-module Vaults 
-  ( Vault
-  , VaultEntry
-  , Secrets
-  , getVaultFile'
-  , putVaultFile'
-  , getVaultFile
-  , putVaultFile       
-  , encryptVault
-  , decryptVault
-  ) 
+module SshVault.Vault 
+    ( Vault (..)
+    , VaultEntry (..)
+    , Secrets (..)
+    , getVaultFile'
+    , putVaultFile'
+    , getVaultFile
+    , putVaultFile
+    , encryptVault
+    , decryptVault
+    )
 where
 
 import Crypto.Simple.CTR (encrypt, decrypt)
@@ -79,7 +79,7 @@ genSHA256 key =
    
 
 genAESKey :: Text -> BS.ByteString
-genAESKey key = Data.ByteString.Char8.pack . take 31 $ genSHA256 key
+genAESKey key = Data.ByteString.Char8.pack . take 32 $ genSHA256 key
 
 
 getVaultFile :: String -> IO Text

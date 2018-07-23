@@ -1,6 +1,6 @@
 -- :set -XOverloadedStrings
 {-# LANGUAGE OverloadedStrings #-}
-module Workflows 
+module SshVault.Workflows 
     (
       ssh
     , uploadKey

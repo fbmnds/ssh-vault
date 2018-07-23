@@ -1,11 +1,21 @@
 
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE DeriveGeneric #-}
+--{-# LANGUAGE DeriveGeneric #-}
 module Main where
 
-import Workflows (ssh)
-import Vaults (Vault, VaultEntry, Secrets, getVaultFile', putVaultFile', getVaultFile, putVaultFile, encryptVault, decryptVault)
+import SshVault.Workflows (ssh)
+import SshVault.Vault 
+    ( Vault (..)
+    , VaultEntry (..)
+    , Secrets (..)
+    , getVaultFile'
+    , putVaultFile'
+    , getVaultFile
+    , putVaultFile
+    , encryptVault
+    , decryptVault
+    )
 import Turtle (ExitCode, printf, fromString, liftIO, readline, view)
 import Turtle.Format
 import Turtle.Prelude (stdout, input, shell)
@@ -21,35 +31,6 @@ import Data.Aeson.Encode.Pretty
 import Data.Text(Text, pack)
 
 import GHC.Generics
-
-data Secrets =
-  Secrets { user :: Text
-          , key_secret :: Text
-          , key_file :: Text
-          } deriving (Show, Generic)
-
-instance FromJSON Main.Secrets
-instance ToJSON Main.Secrets
-
-data VaultEntry =
-  VaultEntry { users :: [Text]
-        , host  :: Text
-        , host_key :: Text
-        , ip4 :: Text
-        , ip6 :: Text
-        , port :: Int
-        , secrets :: [Main.Secrets]
-        } deriving (Show, Generic)
-
-instance FromJSON Main.VaultEntry
-instance ToJSON Main.VaultEntry
-
-newtype Vault =
-  Vault { vault :: [Main.VaultEntry] 
-    } deriving (Show, Generic)
-
-instance FromJSON Main.Vault
-instance ToJSON Main.Vault
 
 
 nl :: IO ()
@@ -88,12 +69,12 @@ main = do
   nl
 
 
-  let (v :: Vaults.Vault) = fromMaybe (error "failed to parse Vault decode $ encode") . decode $ encode vvs
+  let (v :: Vault) = fromMaybe (error "failed to parse Vault decode $ encode") . decode $ encode vvs
   printf s . Data.Text.pack . Data.ByteString.Lazy.Char8.unpack $ encodePretty v
   nl 
 
 
-  let (vf :: Vaults.Vault) = fromMaybe (error "failed to parse Vault bytes from file") $ decode sv
+  let (vf :: Vault) = fromMaybe (error "failed to parse Vault bytes from file") $ decode sv
   printf s . Data.Text.pack . Data.ByteString.Lazy.Char8.unpack $ encodePretty vf
   nl 
 

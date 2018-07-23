@@ -9,13 +9,17 @@ author: Author name here
 homepage: https://github.com/githubuser/ssh-vault#readme
 category: Web
 build-type: Simple
-extra-source-files:
-    README.md
+-- extra-source-files:
+--    README.md
 
-executable ssh-vault
-    main-is: Main.hs
+
+library
     hs-source-dirs: src
     default-language: Haskell2010
+    exposed-modules: 
+          SshVault.Common
+        , SshVault.Vault
+        , SshVault.Workflows
     build-depends:
         base >=4.7 && <5,
         turtle -any,
@@ -27,3 +31,24 @@ executable ssh-vault
         aeson >=1.3.1.1,
         aeson-pretty >=0.8.7,
         cryptonite -any
+
+executable ssh-vault
+    hs-source-dirs: ., src
+    default-language: Haskell2010
+    main-is: Main.hs
+    build-depends:
+        ssh-vault,
+        base >=4.7 && <5,
+        turtle -any,
+        crypto-simple >=0.1.0.0,
+        text -any,
+        bytestring -any,
+        memory >=0.14.14,
+        utf8-string -any,
+        aeson >=1.3.1.1,
+        aeson-pretty >=0.8.7,
+        cryptonite -any
+    other-modules:
+          SshVault.Common
+        , SshVault.Vault
+        , SshVault.Workflows    
