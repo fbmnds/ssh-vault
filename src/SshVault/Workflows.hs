@@ -14,7 +14,13 @@ import Data.Maybe (fromMaybe)
 import Data.Text (Text, unpack)
 
 import Turtle (ExitCode, die, fromString, format, liftIO, readline, shell, empty, proc)
-import Turtle.Format (Format, printf, (%), s)
+import Turtle.Format 
+    (
+--        Format 
+      printf
+    , (%)
+    , s
+    )
 import Turtle.Line (lineToText)
   
 

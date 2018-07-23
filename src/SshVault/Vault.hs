@@ -18,7 +18,7 @@ where
 import Crypto.Simple.CTR (encrypt, decrypt)
 
 import Crypto.Hash (hash, SHA256 (..), Digest)
-import Crypto.Hash.Algorithms
+--import Crypto.Hash.Algorithms
 
 import qualified Data.ByteString as BS  
 import Data.ByteString.Lazy (ByteString)
@@ -27,14 +27,19 @@ import Data.ByteString.Char8 (pack, unpack)
 import Data.ByteString.UTF8 (fromString)
 import Data.Text (Text, pack, unpack)
 import Data.Maybe (fromMaybe)
-import Data.ByteArray (convert)
+--import Data.ByteArray (convert)
 
 import System.IO (readFile, writeFile)
 
 import Data.Aeson
 import GHC.Generics
 
-import Turtle (ExitCode, w, printf)
+import Turtle 
+    (
+--      ExitCode, 
+      w
+    , printf
+    )
 
 
 data Secrets =
@@ -100,8 +105,8 @@ getVaultFile' fn = do
 
 
 putVaultFile :: String -> Text -> Vault -> IO ()
-putVaultFile fn key vault =  do
-  bs <- encryptVault key vault
+putVaultFile fn k v =  do
+  bs <- encryptVault k v
   writeFile fn $ Data.ByteString.Char8.unpack bs
 
 
@@ -116,9 +121,9 @@ decryptVault key fn = do
  
 
 encryptVault :: Text -> Vault -> IO BS.ByteString
-encryptVault key vault = do 
-  let k' = genAESKey key
-      v' = Data.ByteString.Char8.pack . Data.ByteString.Lazy.Char8.unpack $ encode vault
+encryptVault k v = do 
+  let k' = genAESKey k
+      v' = Data.ByteString.Char8.pack . Data.ByteString.Lazy.Char8.unpack $ encode v
   Crypto.Simple.CTR.encrypt k' v'
 
 

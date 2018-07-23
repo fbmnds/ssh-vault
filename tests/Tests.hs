@@ -4,7 +4,7 @@
 --{-# LANGUAGE DeriveGeneric #-}
 module Main where
 
-import SshVault.Workflows (ssh)
+--import SshVault.Workflows (ssh)
 import SshVault.Vault 
     ( Vault (..)
     , VaultEntry (..)
@@ -13,25 +13,41 @@ import SshVault.Vault
     , putVaultFile'
     , getVaultFile
     , putVaultFile
-    , encryptVault
+--    , encryptVault
     , decryptVault
     )
 import SshVault.Common (getKeyPhrase)
-import Turtle (ExitCode, printf, fromString, liftIO, readline, view)
+import Turtle 
+    ( ExitCode
+    , printf
+--    , fromString
+--    , liftIO
+--    , readline
+--    , view
+    )
 import Turtle.Format
-import Turtle.Prelude (stdout, input, shell)
-import Turtle.Line (lineToText)
+import Turtle.Prelude 
+    ( 
+--      stdout
+--    , input
+      shell
+    )
+--import Turtle.Line (lineToText)
 
 
-import Data.ByteString.Lazy (ByteString)
+--import Data.ByteString.Lazy (ByteString)
 import Data.ByteString.Lazy.Char8 (unpack)
 import Data.Maybe (fromMaybe)
 import Data.Aeson
-import Data.Aeson.Types 
+--import Data.Aeson.Types 
 import Data.Aeson.Encode.Pretty
-import Data.Text(Text, pack)
+import Data.Text
+    (
+--      Text, 
+    pack
+    )
 
-import GHC.Generics
+--import GHC.Generics
 
 
 nl :: IO ()
@@ -84,7 +100,7 @@ test = do
 
   passwd' <- getKeyPhrase
   let passwd = Data.Text.pack $ show passwd'
-  
+
   -- _ <- putVaultFile' "/home/fb/.ssh/ssh-vault-evf.json" (Data.Text.pack $ Data.ByteString.Lazy.Char8.unpack evf) 
   _ <- putVaultFile "/home/fb/.ssh/ssh-vault-enc.json" passwd vf
 
