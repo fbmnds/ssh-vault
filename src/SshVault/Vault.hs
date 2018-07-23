@@ -21,7 +21,7 @@ import Crypto.Hash (hash, SHA256 (..), Digest)
 --import Crypto.Hash.Algorithms
 
 import qualified Data.ByteString as BS  
-import Data.ByteString.Lazy (ByteString)
+--import Data.ByteString.Lazy (ByteString, readFile)
 import Data.ByteString.Lazy.Char8 (pack, unpack)
 import Data.ByteString.Char8 (pack, unpack)
 import Data.ByteString.UTF8 (fromString)
@@ -89,7 +89,7 @@ genAESKey key = Data.ByteString.Char8.pack . take 32 $ genSHA256 key
 
 getVaultFile :: String -> IO Text
 getVaultFile fn = do   
-  contents <- readFile fn      
+  contents <- System.IO.readFile fn      
   return $ Data.Text.pack contents
 
 
@@ -98,10 +98,8 @@ putVaultFile' fn vaultbs =
   writeFile fn (Data.Text.unpack vaultbs)
 
 
-getVaultFile' :: String -> IO ByteString
-getVaultFile' fn = do   
-  contents <- readFile fn      
-  return $ Data.ByteString.Lazy.Char8.pack contents
+getVaultFile' :: String -> IO BS.ByteString
+getVaultFile' = BS.readFile
 
 
 putVaultFile :: String -> Text -> Vault -> IO ()

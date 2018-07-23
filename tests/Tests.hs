@@ -4,6 +4,7 @@
 --{-# LANGUAGE DeriveGeneric #-}
 module Main where
 
+import qualified System.IO as IO
 import Control.Exception (SomeException, catch)
 
 --import SshVault.Workflows (ssh)
@@ -39,10 +40,11 @@ import Turtle.Prelude
     )
 --import Turtle.Line (lineToText)
 
-import Data.ByteArray (eq, convert)
+import Data.ByteArray (eq, convert, length)
 import Data.ByteString
---import Data.ByteString.Lazy (ByteString)
-import Data.ByteString.Lazy.Char8 (unpack)
+import Data.ByteString.Internal (c2w)
+import Data.ByteString.Lazy (ByteString, pack)
+import Data.ByteString.Lazy.Char8 (pack, unpack, toStrict, map)
 import Data.Maybe (fromMaybe)
 import Data.Aeson
 --import Data.Aeson.Types 
@@ -101,17 +103,27 @@ textSBytes _ = do
 readUnencryptedVaultFromJSON :: () -> IO ()
 readUnencryptedVaultFromJSON _ = do
   -- read file to scrubbed bytes
-  
-  -- decode JSON
+  vsc' <- getVaultFile' "./tests/data/vault0.json"
+  let vsc = toSBytes vsc'
+  printf w $ Data.ByteArray.length vsc
+  nl
+  IO.putStrLn "decode JSON"
+  let (v :: Vault) = 
+        fromMaybe
+          (error "readUnencryptedVaultFromJSON: failed to parse Vault decode $ encode")
+          . decode $ toLUBytes vsc
   -- verify first element
+  printf w v
   nl
-  nl
+  IO.putStrLn "---"
 
 
 
 test :: IO ExitCode
 test = do
   textSBytes () 
+
+  readUnencryptedVaultFromJSON ()
 
   sv <- getVaultFile' "/home/fb/.ssh/ssh-vault.json"
 --  printf s . fromText $ Data.ByteText.Lazy.Char8.unpack sv
@@ -145,9 +157,9 @@ test = do
   nl 
 
 
-  let (vf :: Vault) = fromMaybe (error "failed to parse Vault bytes from file") $ decode sv
-  printf s . Data.Text.pack . Data.ByteString.Lazy.Char8.unpack $ encodePretty vf
-  nl 
+  --let (vf :: Vault) = fromMaybe (error "failed to parse Vault bytes from file") . decode $ Data.ByteString.Lazy.Char8.unpack sv
+  --printf s . Data.Text.pack . Data.ByteString.Lazy.Char8.unpack $ encodePretty vf
+  --nl 
 
 
 --  passwd' <- getKeyPhrase
@@ -155,13 +167,13 @@ test = do
   let passwd = "123456789"
 
   -- _ <- putVaultFile' "/home/fb/.ssh/ssh-vault-evf.json" (Data.Text.pack $ Data.ByteString.Lazy.Char8.unpack evf) 
-  _ <- putVaultFile "/home/fb/.ssh/ssh-vault-enc.json" passwd vf
+  --_ <- putVaultFile "/home/fb/.ssh/ssh-vault-enc.json" passwd vf
 
   vvf <- catch 
       (decryptVault passwd "/home/fb/.ssh/ssh-vault-enc.json") 
       (\(e' :: SomeException) -> do
         printf w $ "failed JSON decoding throws " ++ show e'
-        return vf)
+        return vvs)
   printf s . Data.Text.pack . Data.ByteString.Lazy.Char8.unpack $ encodePretty vvf
   nl 
 
