@@ -91,7 +91,12 @@ prop_scrubbedbytes t =
     `eq` toBytes (toSBytes t')
     ==   toBytes t'
     `eq` toBytes (toSBytes t')
-  where t' = toText t
+    &&   toSBytes t''
+    `eq` toSBytes (toLUBytes t'')
+    ==   toBytes t''
+    `eq` toBytes (toLUBytes t'')    
+  where t'  = toText t
+        t'' = toBytes t
 
 
 readUnencryptedVaultFromJSON :: () -> IO Vault
