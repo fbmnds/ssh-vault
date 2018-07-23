@@ -4,6 +4,8 @@
 --{-# LANGUAGE DeriveGeneric #-}
 module Main where
 
+import Control.Exception (SomeException, catch)
+
 --import SshVault.Workflows (ssh)
 import SshVault.Vault 
     ( Vault (..)
@@ -16,7 +18,7 @@ import SshVault.Vault
 --    , encryptVault
     , decryptVault
     )
-import SshVault.Common (getKeyPhrase)
+--import SshVault.Common (getKeyPhrase)
 import Turtle 
     ( ExitCode
     , printf
@@ -98,14 +100,18 @@ test = do
   nl 
 
 
-  passwd' <- getKeyPhrase
-  let passwd = Data.Text.pack $ show passwd'
+--  passwd' <- getKeyPhrase
+--  let passwd = Data.Text.pack $ show passwd'
+  let passwd = "123456789"
 
   -- _ <- putVaultFile' "/home/fb/.ssh/ssh-vault-evf.json" (Data.Text.pack $ Data.ByteString.Lazy.Char8.unpack evf) 
   _ <- putVaultFile "/home/fb/.ssh/ssh-vault-enc.json" passwd vf
 
-
-  vvf <- decryptVault passwd "/home/fb/.ssh/ssh-vault-enc.json"
+  vvf <- catch 
+      (decryptVault passwd "/home/fb/.ssh/ssh-vault-enc.json") 
+      (\(e' :: SomeException) -> do
+        printf w $ "failed JSON decoding throws " ++ show e'
+        return vf)
   printf s . Data.Text.pack . Data.ByteString.Lazy.Char8.unpack $ encodePretty vvf
   nl 
 
