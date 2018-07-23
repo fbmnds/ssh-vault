@@ -40,12 +40,14 @@ import Turtle.Prelude
 --import Turtle.Line (lineToText)
 
 import Data.ByteArray (eq, length)
-import qualified Data.Text as T
 
 import Data.Maybe (fromMaybe)
 import Data.Aeson
 --import Data.Aeson.Types 
 import Data.Aeson.Encode.Pretty
+
+import Test.QuickCheck
+
 
 --import GHC.Generics
 
@@ -78,19 +80,22 @@ ve0 = VaultEntry
         s0
 
 
-textSBytes :: () -> IO ()
-textSBytes _ = do
-  let (t :: T.Text) = "äöüß!\"§$%&/"
-      t' = toSBytes t
-      t'' = toBytes t'
-
-  printf (s % "\n") t
-  printf (w % "\n") $ t'' `eq` t'
+prop_scrubbedbytes :: String -> Property
+prop_scrubbedbytes t =
+  True
+    ==>  toSBytes t
+    `eq` toBytes (toSBytes t)
+    ==   toBytes t
+    `eq` toBytes (toSBytes t)
+    &&   toSBytes t'
+    `eq` toBytes (toSBytes t')
+    ==   toBytes t'
+    `eq` toBytes (toSBytes t')
+  where t' = toText t
 
 
 readUnencryptedVaultFromJSON :: () -> IO Vault
 readUnencryptedVaultFromJSON _ = do
-  -- read file to scrubbed bytes
   vsc' <- getVaultFile' "./tests/data/vault0.json"
   let vsc = toSBytes vsc'
   printf (w % "\n") $ Data.ByteArray.length vsc
@@ -101,24 +106,29 @@ readUnencryptedVaultFromJSON _ = do
           . decode $ toLUBytes vsc
   
   printf (s % "\n") . toText $ encodePretty v
-  printf s "---\n"
+  printf s "+++\n"
   return v
 
 
-test :: IO ExitCode
+test :: IO ()
 test = do
-  textSBytes () 
-
+  -- | Convert to ScrubbedBytes
+  -- textSBytes () 
+  -- | Read and decode plaintext JSON from file
   _ <- readUnencryptedVaultFromJSON ()
-
+  -- | Verify vault consistency from JSON decoding 
   -- vvf <- catch 
   --     (decryptVault passwd "/home/fb/.ssh/ssh-vault-enc.json") 
   --     (\(e' :: SomeException) -> do
   --       printf w $ "failed JSON decoding throws " ++ show e'
   --       return vvs)
   -- printf s . toText $ encodePretty vvf
+  return ()
 
-  done
 
+main :: IO ()
+main = do
+  test
+  quickCheck prop_scrubbedbytes
 
-main = test
+  
