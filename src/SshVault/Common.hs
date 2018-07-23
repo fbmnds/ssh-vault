@@ -1,5 +1,10 @@
 {-# LANGUAGE OverloadedStrings #-}
-module SshVault.Common where
+module SshVault.Common 
+  (
+    getKeyPhrase
+  )
+
+where
 
 import qualified Data.ByteString.Char8 as BS
 import Control.Exception(bracket_)

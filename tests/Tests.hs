@@ -16,6 +16,7 @@ import SshVault.Vault
     , encryptVault
     , decryptVault
     )
+import SshVault.Common (getKeyPhrase)
 import Turtle (ExitCode, printf, fromString, liftIO, readline, view)
 import Turtle.Format
 import Turtle.Prelude (stdout, input, shell)
@@ -38,6 +39,8 @@ nl = printf s "\n"
 
 done :: IO ExitCode
 done = shell "" ""
+
+
 
 
 test :: IO ExitCode
@@ -79,15 +82,9 @@ test = do
   nl 
 
 
-  view (return "[?] enter password > ")
-  passw' <- readline
-  let passwd = lineToText . fromMaybe (error "failed to parse password") $ passw'
-  nl
-    -- case passw' of
-    --     Nothing -> "123456789"
-    --     Just s' -> lineToText s'
-
-
+  passwd' <- getKeyPhrase
+  let passwd = Data.Text.pack $ show passwd'
+  
   -- _ <- putVaultFile' "/home/fb/.ssh/ssh-vault-evf.json" (Data.Text.pack $ Data.ByteString.Lazy.Char8.unpack evf) 
   _ <- putVaultFile "/home/fb/.ssh/ssh-vault-enc.json" passwd vf
 
@@ -100,7 +97,7 @@ test = do
   done
 
 
-
+main = test
 
  
 

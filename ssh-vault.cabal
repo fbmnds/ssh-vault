@@ -56,7 +56,7 @@ executable ssh-vault
 
 Test-Suite ssh-vault-tests
   type:              exitcode-stdio-1.0
-  hs-source-dirs:    tests
+  hs-source-dirs:    tests, src
   Main-is:           Tests.hs
   Other-modules:     
           SshVault.Common
