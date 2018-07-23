@@ -100,7 +100,7 @@ textSBytes _ = do
   printf w $ t'' `eq` t'
   nl
 
-readUnencryptedVaultFromJSON :: () -> IO ()
+readUnencryptedVaultFromJSON :: () -> IO Vault
 readUnencryptedVaultFromJSON _ = do
   -- read file to scrubbed bytes
   vsc' <- getVaultFile' "./tests/data/vault0.json"
@@ -112,18 +112,23 @@ readUnencryptedVaultFromJSON _ = do
         fromMaybe
           (error "readUnencryptedVaultFromJSON: failed to parse Vault decode $ encode")
           . decode $ toLUBytes vsc
-  -- verify first element
-  printf w v
+  
+  printf s . toText $ encodePretty v
   nl
   IO.putStrLn "---"
-
+  return v
 
 
 test :: IO ExitCode
 test = do
   textSBytes () 
 
-  readUnencryptedVaultFromJSON ()
+  _ <- readUnencryptedVaultFromJSON ()
+
+  done
+
+unused :: IO ExitCode
+unused = do  
 
   sv <- getVaultFile' "/home/fb/.ssh/ssh-vault.json"
 --  printf s . fromText $ Data.ByteText.Lazy.Char8.unpack sv
@@ -182,9 +187,3 @@ test = do
 
 
 main = test
-
- 
-
-  --let detv = decryptVault passwd tv
-
- 
