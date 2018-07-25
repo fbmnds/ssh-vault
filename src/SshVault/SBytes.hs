@@ -10,7 +10,6 @@ import qualified Data.ByteString.Lazy as CL
 import qualified Data.ByteString.Lazy.UTF8 as CLU
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Internal as BI
--- import qualified Data.ByteString.Internal as BI
 import qualified Data.ByteArray as BA
 --import Data.ByteArray (ByteArrayAccess)
 

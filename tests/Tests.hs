@@ -91,6 +91,8 @@ ve0 = VaultEntry
         22
         [u01,u02]
 
+v0 :: Vault
+v0 = Vault [ve0]
 
 prop_scrubbedbytes :: BS.ByteString -> Property
 prop_scrubbedbytes t =
@@ -129,11 +131,7 @@ readUnencryptedVaultFromJSON _ = do
 
 test :: IO ()
 test = do
-  -- | Convert to ScrubbedBytes
-  -- textSBytes () 
-  -- | Read and decode plaintext JSON from file
   _ <- readUnencryptedVaultFromJSON ()
-  -- | Verify vault consistency from JSON decoding 
   -- vvf <- catch 
   --     (decryptVault passwd "/home/fb/.ssh/ssh-vault-enc.json") 
   --     (\(e' :: SomeException) -> do
