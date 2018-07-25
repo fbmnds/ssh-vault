@@ -10,6 +10,7 @@ module Main where
 import SshVault.Vault 
     ( Vault (..)
     , VaultEntry (..)
+    , User (..)
     , Secrets (..)
     , getVaultFile'
 --    , putVaultFile'
@@ -55,29 +56,36 @@ import Test.QuickCheck
 done :: IO ExitCode
 done = shell "" ""
 
+s01 :: Secrets
+s01 = Secrets
+        "root*box1***"
+        "/root/.ssh/id_box1"
 
-s0 :: [Secrets]
-s0 = 
-  [
-      Secrets
-      "root"
-      "root*box1***"
-      "/root/.ssh/id_box1"
-    , Secrets
-      "a"
-      "a*box1******"
-      "/home/a/.ssh/id_box1"
-  ]    
+s02 :: Secrets
+s02 = Secrets
+        "a*box1******"    
+        "/home/a/.ssh/id_box1"
 
+
+u01 :: User
+u01 = User
+        "root"
+        s01
+
+
+u02 :: User
+u02 = User
+        "a"
+        s02
+  
 ve0 :: VaultEntry
 ve0 = VaultEntry 
-        ["root","a"] 
         "box1"
         ""
         ""
         ""
         22
-        s0
+        [u01,u02]
 
 
 prop_scrubbedbytes :: String -> Property

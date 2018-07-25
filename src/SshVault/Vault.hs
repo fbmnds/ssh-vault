@@ -5,6 +5,7 @@
 module SshVault.Vault 
     ( Vault (..)
     , VaultEntry (..)
+    , User (..)
     , Secrets (..)
     , getVaultFile'
     , putVaultFile'
@@ -43,22 +44,28 @@ import Turtle
 
 
 data Secrets =
-  Secrets { user :: Text
-          , key_secret :: Text
+  Secrets { key_secret :: Text
           , key_file :: Text
           } deriving (Show, Generic)
 
 instance FromJSON Secrets
 instance ToJSON Secrets
 
+data User =
+  User { user :: Text
+       , secrets :: Secrets
+       } deriving (Show, Generic)
+
+instance FromJSON User
+instance ToJSON User
+
 data VaultEntry =
-  VaultEntry { users :: [Text]
-        , host  :: Text
+  VaultEntry { host  :: Text
         , host_key :: Text
         , ip4 :: Text
         , ip6 :: Text
         , port :: Int
-        , secrets :: [Secrets]
+        , users :: [User]
         } deriving (Show, Generic)
 
 instance FromJSON VaultEntry
