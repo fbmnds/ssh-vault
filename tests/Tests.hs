@@ -39,7 +39,8 @@ import Turtle.Prelude
       shell
     )
 --import Turtle.Line (lineToText)
-
+import qualified Data.ByteString as BS
+--import Data.ByteString (pack, unpack)
 import Data.ByteArray (eq, length)
 
 import Data.Maybe (fromMaybe)
@@ -87,8 +88,10 @@ ve0 = VaultEntry
         22
         [u01,u02]
 
+instance Arbitrary BS.ByteString where arbitrary = BS.pack <$> arbitrary
+instance CoArbitrary BS.ByteString where coarbitrary = coarbitrary . BS.unpack
 
-prop_scrubbedbytes :: String -> Property
+prop_scrubbedbytes :: BS.ByteString -> Property
 prop_scrubbedbytes t =
   True
     ==>  toSBytes t
