@@ -53,6 +53,9 @@ import Test.QuickCheck
 
 --import GHC.Generics
 
+instance Arbitrary BS.ByteString where arbitrary = BS.pack <$> arbitrary
+instance CoArbitrary BS.ByteString where coarbitrary = coarbitrary . BS.unpack
+
 
 done :: IO ExitCode
 done = shell "" ""
@@ -88,8 +91,6 @@ ve0 = VaultEntry
         22
         [u01,u02]
 
-instance Arbitrary BS.ByteString where arbitrary = BS.pack <$> arbitrary
-instance CoArbitrary BS.ByteString where coarbitrary = coarbitrary . BS.unpack
 
 prop_scrubbedbytes :: BS.ByteString -> Property
 prop_scrubbedbytes t =
