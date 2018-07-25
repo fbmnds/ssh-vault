@@ -7,8 +7,6 @@ module SshVault.Vault
     , VaultEntry (..)
     , User (..)
     , Secrets (..)
-    , getVaultFile'
-    , putVaultFile'
     , getVaultFile
     , putVaultFile
     , encryptVault
@@ -25,10 +23,10 @@ import Crypto.Hash (hash, SHA256 (..), Digest)
 
 import qualified Data.Text as T
 import qualified Data.ByteString.Char8 as C
-import qualified Data.ByteString.Lazy as CL
-import qualified Data.ByteString.Lazy.UTF8 as CLU
+--import qualified Data.ByteString.Lazy as CL
+--import qualified Data.ByteString.Lazy.UTF8 as CLU
 import qualified Data.ByteString as B
-import qualified Data.ByteString.Internal as BI
+--import qualified Data.ByteString.Internal as BI
 import qualified Data.ByteArray as BA
 
 import Data.ByteString.UTF8 as CU
@@ -38,13 +36,14 @@ import Data.Maybe (fromMaybe)
 
 import System.IO (readFile, writeFile)
 
-import Data.Aeson
+import qualified Data.Aeson as JSON
 import GHC.Generics
 
 import Turtle 
     (
 --      ExitCode, 
-      w
+--      w
+      s
     , printf
     )
 
@@ -54,16 +53,16 @@ data Secrets =
           , key_file :: T.Text
           } deriving (Show, Generic)
 
-instance FromJSON Secrets
-instance ToJSON Secrets
+instance JSON.FromJSON Secrets
+instance JSON.ToJSON Secrets
 
 data User =
   User { user :: T.Text
        , secrets :: Secrets
        } deriving (Show, Generic)
 
-instance FromJSON User
-instance ToJSON User
+instance JSON.FromJSON User
+instance JSON.ToJSON User
 
 data VaultEntry =
   VaultEntry { host  :: T.Text
@@ -74,29 +73,17 @@ data VaultEntry =
         , users :: [User]
         } deriving (Show, Generic)
 
-instance FromJSON VaultEntry
-instance ToJSON VaultEntry
+instance JSON.FromJSON VaultEntry
+instance JSON.ToJSON VaultEntry
 
 newtype Vault =
   Vault { vault :: [VaultEntry] 
     } deriving (Show, Generic)
 
-instance FromJSON Vault
-instance ToJSON Vault
+instance JSON.FromJSON Vault
+instance JSON.ToJSON Vault
  
-{-
 
--genSHA256 :: Text -> String
--genSHA256 key = 
--  let h :: Digest SHA256
--      h = hash . Prelude.head $ fmap Data.ByteString.UTF8.fromString [Data.Text.unpack key] in
--  show h --genSHA256' key 
--   
--
--genAESKey :: Text -> BS.ByteString
--genAESKey key = Data.ByteString.Char8.pack . take 32 $ genSHA256 key
-
--}
 
 genSHA256 :: T.Text -> String
 genSHA256 key = 
@@ -115,40 +102,16 @@ getVaultFile fn = do
   return $ T.pack contents
 
 
-putVaultFile' :: String -> T.Text -> IO ()
-putVaultFile' fn vaultbs = 
-  writeFile fn (T.unpack vaultbs)
+putVaultFile :: String -> BA.ScrubbedBytes -> Vault -> IO ()
+putVaultFile fn k v = encryptVault k v >>= \bs -> writeFile fn $ C.unpack bs
 
 
-getVaultFile' :: String -> IO B.ByteString
-getVaultFile' = B.readFile
-
-
-putVaultFile :: String -> T.Text -> Vault -> IO ()
-putVaultFile fn k v =  do
-  bs <- encryptVault k v
-  writeFile fn $ C.unpack bs
-
-
-decryptVault :: T.Text -> String-> IO Vault
+decryptVault :: BA.ScrubbedBytes -> String-> IO Vault
 decryptVault key fn = do
-  v <- getVaultFile fn
-  v' <- Crypto.Simple.CTR.decrypt (genAESKey key) $ toBytes v
-  let v'' = C.pack $ show v'
-  printf w v''
-  return . fromMaybe (error "failed to decrypt vault") . Data.Aeson.decode $ toLUBytes v''
+  v <- B.readFile fn >>= \v' -> Crypto.Simple.CTR.decrypt (genAESKey $ toText key) v'
+  return . fromMaybe (error "failed to decrypt vault") . JSON.decode $ toLUBytes v
  
 
-encryptVault :: T.Text -> Vault -> IO B.ByteString
-encryptVault k v = do 
-  let k' = genAESKey k
-      v' = toBytes . show $ Data.Aeson.encode v
-  Crypto.Simple.CTR.encrypt k' v'
+encryptVault :: BA.ScrubbedBytes -> Vault -> IO B.ByteString
+encryptVault k v = Crypto.Simple.CTR.encrypt (genAESKey $ toText k) (toBytes $ JSON.encode v)
 
-
--- > import Crypto.Simple.CBC (encrypt, decrypt) 
--- > import Data.ByteString.Char8 (pack)
--- > let key = pack "my secret key"
--- > let msg = pack "this is a message"
--- > encrypt key msg >>= \secretMsg -> decrypt key secretMsg
--- "this is a message"

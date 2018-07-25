@@ -12,7 +12,6 @@ import SshVault.Vault
     , VaultEntry (..)
     , User (..)
     , Secrets (..)
-    , getVaultFile'
 --    , putVaultFile'
 --    , getVaultFile
 --    , putVaultFile
@@ -25,7 +24,6 @@ import SshVault.SBytes
 import Turtle 
     ( ExitCode
     , printf
-    ,
 --    , fromString
 --    , liftIO
 --    , readline
@@ -39,22 +37,22 @@ import Turtle.Prelude
       shell
     )
 --import Turtle.Line (lineToText)
-import qualified Data.ByteString as BS
+import qualified Data.ByteString as B
 --import Data.ByteString (pack, unpack)
 import Data.ByteArray (eq, length)
 
 import Data.Maybe (fromMaybe)
 import Data.Aeson
 --import Data.Aeson.Types 
-import Data.Aeson.Encode.Pretty
+--import Data.Aeson.Encode.Pretty
 
 import Test.QuickCheck
 
 
 --import GHC.Generics
 
-instance Arbitrary BS.ByteString where arbitrary = BS.pack <$> arbitrary
-instance CoArbitrary BS.ByteString where coarbitrary = coarbitrary . BS.unpack
+instance Arbitrary B.ByteString where arbitrary = B.pack <$> arbitrary
+instance CoArbitrary B.ByteString where coarbitrary = coarbitrary . B.unpack
 
 
 done :: IO ExitCode
@@ -94,7 +92,7 @@ ve0 = VaultEntry
 v0 :: Vault
 v0 = Vault [ve0]
 
-prop_scrubbedbytes :: BS.ByteString -> Property
+prop_scrubbedbytes :: B.ByteString -> Property
 prop_scrubbedbytes t =
   True
     ==>  toSBytes t
@@ -113,25 +111,23 @@ prop_scrubbedbytes t =
         t'' = toBytes t
 
 
-readUnencryptedVaultFromJSON :: () -> IO Vault
-readUnencryptedVaultFromJSON _ = do
-  vsc' <- getVaultFile' "./tests/data/vault0.json"
+decodeVaultFromJSON :: () -> IO Vault
+decodeVaultFromJSON _ = do
+  vsc' <- B.readFile "./tests/data/vault0.json"
   let vsc = toSBytes vsc'
   printf (w % "\n") $ Data.ByteArray.length vsc
   printf s "decode JSON\n"
   let (v :: Vault) = 
         fromMaybe
-          (error "readUnencryptedVaultFromJSON: failed to parse Vault decode $ encode")
+          (error "decodeVaultFromJSON: failed to parse Vault decode $ encode")
           . decode $ toLUBytes vsc
-  
-  printf (s % "\n") . toText $ encodePretty v
-  printf s "+++\n"
+  printf s "+++ OK, passed JSON decode test.\n"
   return v
 
 
 test :: IO ()
 test = do
-  _ <- readUnencryptedVaultFromJSON ()
+  _ <- decodeVaultFromJSON ()
   -- vvf <- catch 
   --     (decryptVault passwd "/home/fb/.ssh/ssh-vault-enc.json") 
   --     (\(e' :: SomeException) -> do
