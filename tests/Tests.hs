@@ -6,50 +6,36 @@ module Main where
 
 --import Control.Exception (SomeException, catch)
 
---import SshVault.Workflows (ssh)
+
 import SshVault.Vault 
     ( Vault (..)
     , VaultEntry (..)
     , User (..)
     , Secrets (..)
+    , getHosts
 --    , putVaultFile'
 --    , getVaultFile
 --    , putVaultFile
 --    , encryptVault
 --    , decryptVault
     )
+import SshVault.Workflows
 import SshVault.SBytes
---import SshVault.Common (getKeyPhrase)
+
 
 import Turtle 
-    ( ExitCode
-    , printf
---    , fromString
---    , liftIO
---    , readline
---    , view
-    )
-import Turtle.Format
-import Turtle.Prelude 
-    ( 
---      stdout
---    , input
-      shell
-    )
---import Turtle.Line (lineToText)
+--import Turtle.Format
+--import Turtle.Prelude 
 import qualified Data.ByteString as B
---import Data.ByteString (pack, unpack)
 import Data.ByteArray (eq, length)
 
 import Data.Maybe (fromMaybe)
 import Data.Aeson
---import Data.Aeson.Types 
---import Data.Aeson.Encode.Pretty
 
 import Test.QuickCheck
 
+import System.Environment
 
---import GHC.Generics
 
 instance Arbitrary B.ByteString where arbitrary = B.pack <$> arbitrary
 instance CoArbitrary B.ByteString where coarbitrary = coarbitrary . B.unpack
@@ -107,7 +93,7 @@ prop_scrubbedbytes t =
     `eq` toSBytes (toLUBytes t'')
     ==   toBytes t''
     `eq` toBytes (toLUBytes t'')    
-  where t'  = toText t
+  where t'  = SshVault.SBytes.toText t
         t'' = toBytes t
 
 
@@ -125,9 +111,15 @@ decodeVaultFromJSON _ = do
   return v
 
 
+testGetHost :: Vault -> IO ()
+testGetHost v = case getHosts v of
+  ["box1","box2","box3"] -> printf s "+++ OK, passed getHost test.\n"
+  _                      -> error "--- ERR, failed getHost test.\n" 
+
 test :: IO ()
 test = do
-  _ <- decodeVaultFromJSON ()
+  v <- decodeVaultFromJSON ()
+  testGetHost v
   -- vvf <- catch 
   --     (decryptVault passwd "/home/fb/.ssh/ssh-vault-enc.json") 
   --     (\(e' :: SomeException) -> do
@@ -140,6 +132,8 @@ test = do
 main :: IO ()
 main = do
   test
+  h <- lookupEnv "HOME"
+  s' <- genSSHSecrets ("", fromString . fromMaybe "failed path $HOME" $ h) ("root",u01)
+  printf w s'
+  printf s "+++ OK, passed genSSHSecrets test.\n"
   quickCheck prop_scrubbedbytes
-
-  

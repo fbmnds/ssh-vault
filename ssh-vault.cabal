@@ -13,13 +13,13 @@ extra-source-files:
     README.md
 
 library
+    exposed-modules:
+        SshVault.Common
+        SshVault.Vault
+        SshVault.Workflows
+        SshVault.SBytes
     hs-source-dirs: src
     default-language: Haskell2010
-    exposed-modules: 
-          SshVault.Common
-        , SshVault.Vault
-        , SshVault.Workflows
-        , SshVault.SBytes
     build-depends:
         base >=4.7 && <5,
         turtle -any,
@@ -31,7 +31,14 @@ library
         aeson >=1.3.1.1,
         aeson-pretty >=0.8.7,
         cryptonite -any,
-        memory -any
+        memory -any,
+        unordered-containers -any,
+        vector >=0.12.0.1,
+        cprng-aes -any,
+        mtl -any,
+        binary -any,
+        random -any,
+        old-time -any
 
 executable ssh-vault
     main-is: Main.hs
@@ -54,7 +61,14 @@ executable ssh-vault
         aeson >=1.3.1.1,
         aeson-pretty >=0.8.7,
         cryptonite -any,
-        memory -any
+        memory -any,
+        unordered-containers -any,
+        vector >=0.12.0.1,
+        cprng-aes -any,
+        mtl -any,
+        binary -any,
+        random -any,
+        old-time -any
 
 test-suite ssh-vault-tests
     type: exitcode-stdio-1.0
@@ -81,4 +95,10 @@ test-suite ssh-vault-tests
         aeson-pretty >=0.8.7,
         cryptonite -any,
         memory -any,
-        QuickCheck >= 2.11.3
+        QuickCheck >=2.11.3,
+        unordered-containers -any,
+        cprng-aes -any,
+        mtl -any,
+        binary -any,
+        random -any,
+        old-time -any
