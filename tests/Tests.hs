@@ -15,12 +15,13 @@ import SshVault.Vault
     , getHosts
 --    , putVaultFile'
 --    , getVaultFile
---    , putVaultFile
+    , putVaultFile
 --    , encryptVault
---    , decryptVault
+    , decryptVault
     )
 import SshVault.Workflows
 import SshVault.SBytes
+import SshVault.Common
 
 
 import Turtle 
@@ -34,7 +35,6 @@ import Data.Aeson
 
 import Test.QuickCheck
 
-import System.Environment
 
 
 instance Arbitrary B.ByteString where arbitrary = B.pack <$> arbitrary
@@ -44,39 +44,15 @@ instance CoArbitrary B.ByteString where coarbitrary = coarbitrary . B.unpack
 done :: IO ExitCode
 done = shell "" ""
 
-s01 :: Secrets
-s01 = Secrets
-        "root*box1***"
-        "/root/.ssh/id_box1"
-
-s02 :: Secrets
-s02 = Secrets
-        "a*box1******"    
-        "/home/a/.ssh/id_box1"
-
-
-u01 :: User
-u01 = User
-        "root"
-        s01
-
-
-u02 :: User
-u02 = User
-        "a"
-        s02
-  
-ve0 :: VaultEntry
-ve0 = VaultEntry 
-        "box1"
-        ""
-        ""
-        ""
-        22
-        [u01,u02]
-
-v0 :: Vault
-v0 = Vault [ve0]
+updateVault01 :: Secrets -> Vault
+updateVault01 s01' =
+  let 
+    s01 = s01'
+    s02 = Secrets "a*box1******" "/home/a/.ssh/id_box1"
+    u01 = User "root" s01
+    u02 = User "a" s02
+    ve0 = VaultEntry  "box1" "" "" "" 22 [u01,u02] in
+  Vault [ve0]
 
 prop_scrubbedbytes :: B.ByteString -> Property
 prop_scrubbedbytes t =
@@ -116,8 +92,8 @@ testGetHost v = case getHosts v of
   ["box1","box2","box3"] -> printf s "+++ OK, passed getHost test.\n"
   _                      -> error "--- ERR, failed getHost test.\n" 
 
-test :: IO ()
-test = do
+test0 :: IO ()
+test0 = do
   v <- decodeVaultFromJSON ()
   testGetHost v
   -- vvf <- catch 
@@ -129,11 +105,38 @@ test = do
   return ()
 
 
-main :: IO ()
-main = do
-  test
-  h <- lookupEnv "HOME"
-  s' <- genSSHSecrets ("", fromString . fromMaybe "failed path $HOME" $ h) ("root",u01)
+test1 :: IO ()
+test1 = do
+  let vk = "0123456789" :: Text 
+  h <- home
+  let cfg = (toSBytes vk, h, "/.ssh/vault") :: Config
+  let vkey = toSBytes $ getCfgVaultKey cfg
+  let fn = getCfgVaultFile cfg
+  let u' = User "root" $ Secrets "root*box1***" "/root/.ssh/id_box1"
+  s' <- genSSHSecrets cfg ("root", u')
   printf w s'
   printf s "+++ OK, passed genSSHSecrets test.\n"
+  let v1 = updateVault01 (Secrets (key_secret s') (key_file s'))
+  putVaultFile vkey fn v1
+  printf s "+++ OK, passed putVaultFile test.\n"
+  v2 <- decryptVault vkey fn
+  if v1 == v2 then printf s "+++ OK, passed decryptVault test.\n" else
+    printf s "-- ERR, failed decryptVault test.\n"
+
+{-
+safeVault :: Config -> Vault -> IO ()
+safeVault cfg v = do 
+    let fn = toString $ format (fp % w) (getCfgHome cfg) (getCfgVault cfg)
+    putVaultFile fn (getCfgVKey cfg) v
+
+readVault :: Config -> IO Vault
+readVault cfg = do
+    let fn = toString $ format (fp % w) (getCfgHome cfg) (getCfgVault cfg)
+    decryptVault (getCfgVKey cfg) fn
+-}
+
+main :: IO ()
+main = do
+  test0
+  test1
   quickCheck prop_scrubbedbytes

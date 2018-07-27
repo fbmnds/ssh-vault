@@ -10,6 +10,9 @@ module SshVault.Common
   , genSHA256
   , getKeyPhrase
   , getConfig
+  , getCfgHome
+  , getCfgVaultFile
+  , getCfgVaultKey
   , procD 
   , shellD
   , rand1000
@@ -17,7 +20,6 @@ module SshVault.Common
   )
 
 where
-
 
 import           SshVault.SBytes
 
@@ -28,23 +30,19 @@ import qualified Data.ByteArray as BA
 import qualified Data.ByteString.UTF8 as CU
 import           Data.Binary (decode)
 
-
 import qualified Crypto.Simple.CTR as CTR
 import           Crypto.Hash (hash, SHA256 (..), Digest)
-
 
 import           Control.Exception (bracket_)
 import           System.IO
 import           System.Random
-import           System.Time
-
 
 import qualified Turtle.Prelude as Tu
 import qualified Turtle as Tu
 import           Turtle.Format
 
 type VaultKeyHash = B.ByteString
-type Config = (B.ByteString, Tu.FilePath)
+type Config = (BA.ScrubbedBytes, Tu.FilePath, String)
 
 
 
@@ -78,25 +76,32 @@ genAESKey key = CU.take 32 . toBytes $ genSHA256 key
 getKeyPhrase :: IO B.ByteString
 getKeyPhrase = do
   old <- hGetEcho stdin
-  keyPhrase <- bracket_ 
-         (hSetEcho stdin True) 
-         (hSetEcho stdin old) 
-         (do
-              putStr "Encryption key phrase: "
-              hFlush stdout
-              hSetEcho stdin False
-              keyPhrase <- getLine
-              putChar '\n'
-              return keyPhrase
-        )
+  putStr "Encryption key phrase: "
+  hFlush stdout
+  hSetEcho stdin False
+  keyPhrase <- getLine
+  putChar '\n'
+  hFlush stdout
+  hSetEcho stdin old
   return . genAESKey $ toText keyPhrase
 
 
 getConfig :: IO Config
 getConfig = do
+  putStrLn "getConfig ###"
   vaultKeyHash <- getKeyPhrase
+  putStrLn "getConfig"
   home <- Tu.home
-  return (vaultKeyHash, home)
+  return (toSBytes vaultKeyHash, home, "/.ssh/vault")
+
+getCfgHome :: Config -> Tu.FilePath
+getCfgHome cfg = case cfg of (_,x',_) -> x'
+
+getCfgVaultFile :: Config -> String
+getCfgVaultFile cfg = case cfg of (_,h,v) -> toString $ format (fp % s) h (toText v)
+
+getCfgVaultKey :: Config -> BA.ScrubbedBytes
+getCfgVaultKey cfg = case cfg of (x,_,_) -> x
 
 
 procD :: T.Text -> [T.Text] -> Tu.Shell Tu.Line -> IO ()

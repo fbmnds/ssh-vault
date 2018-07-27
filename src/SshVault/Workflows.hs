@@ -2,28 +2,18 @@
 {-# LANGUAGE OverloadedStrings #-}
 module SshVault.Workflows 
     (
-      ssh
-    , uploadKeyCmd
+      uploadKeyCmd
     , genSSHFilename
     , chmodSSHFile
     , genSSHSecrets
+
     ) 
     where
 
-import SshVault.Vault 
-    ( Vault (..)
-    , VaultEntry (..)
-    , User (..)
-    , Secrets (..)
-    , Queue
-    , QueueEntry
-    , getQueue
-    )
+import SshVault.Vault
 import SshVault.SBytes
 import SshVault.Common
 
-
-import System.Environment (lookupEnv)
 import System.IO (appendFile)
 
 import Data.Maybe (fromMaybe)
@@ -54,16 +44,12 @@ uploadKeyCmd home newKeyFile currKeyFile user host = format (s % s % s) p1 p2 p3
                     ) user host user
 
 
-getHome :: Config -> Tu.FilePath
-getHome = snd
-
-
 genSSHFilename :: Config -> QueueEntry -> IO Text
 genSSHFilename cfg qe = do 
     date <- Tu.date
     let ud = format (s%w) (user $ snd qe) date
     let kn = toText . genSHA256 $ format (s %s) (fst qe) ud
-    let fn = format (fp % s % s) (getHome cfg) "/.ssh/id" kn
+    let fn = format (fp % s % s) (getCfgHome cfg) "/.ssh/id" kn
     return fn
 
 
@@ -79,6 +65,8 @@ procQueueEntry cfg q    -- q :: QueueEntry = "VaultEntry reduced to single user"
 +    touchNewKeyFile new_key_file chmod 600 u+rw-,go-rwx --> exit
 +    genKeySecret -> randS
 +    genSSHKey new_file
+    updateVault?Queue?
+    safeVault fn
     uploadKey q
 
 -}
@@ -104,43 +92,4 @@ genSSHSecrets cfg qe = do
     printf "[+] chmod 660 on new SSH file"
     return Secrets {key_secret=passwd, key_file=fn} 
 
-ssh :: IO Tu.ExitCode
-ssh = do
-    let newKey  = "NEWKEY"
-    let currKey = "id_rsa2048"
-    let id'     = "root"
-    let vault   = "ssh-vault"
-    let box     = "fun"
 
-    hm' <- lookupEnv "HOME" 
-    let hm'' = fromMaybe "" hm' in
-        if hm'' == "" then
-            Tu.die "[-] $HOME not set"
-        else do
-            let hm = Tu.fromString hm''
-            printf ("[+] $HOME=" % s % "\n") hm
-
-            passwd' <- getKeyPhrase
-            let passwd = toString passwd'
-            _ <- appendFile
-                    (hm'' ++ "/.ssh/" ++ vault)
-                    (unpack box ++ " : " ++ passwd)
-
-            printf "[*] purge previous key\n"
-            shellD     
-                (format ("rm " % s % "/.ssh/" % s % "*") hm newKey)
-                Tu.empty
-
-            printf "[*] generate new key\n"
-            procD
-                "ssh-keygen"
-                [ "-n", id'
-                , "-t", "rsa"
-                , "-b", "4096"
-                , "-f", format (s % "/.ssh/" % s) hm newKey
-                , "-P", toText passwd
-                ]
-                Tu.empty
-
-            printf "[*] upload new key\n"
-            Tu.shell (uploadKeyCmd hm newKey currKey id' box) Tu.empty

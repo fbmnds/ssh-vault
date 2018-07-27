@@ -10,7 +10,6 @@ module SshVault.Vault
     , Secrets (..)
     , Queue
     , QueueEntry
-    , getVaultFile
     , putVaultFile
     , encryptVault
     , decryptVault
@@ -31,14 +30,14 @@ import           Data.Maybe (fromMaybe)
 import qualified Data.Aeson as JSON
 import           GHC.Generics
 
-import           System.IO (readFile, writeFile)
+import           System.IO (writeFile)
 
 
 
 data Secrets =
   Secrets { key_secret :: T.Text
           , key_file :: T.Text
-          } deriving (Show, Generic)
+          } deriving (Show, Generic, Eq)
 instance JSON.FromJSON Secrets
 instance JSON.ToJSON Secrets
 
@@ -46,7 +45,7 @@ instance JSON.ToJSON Secrets
 data User =
   User { user :: T.Text
        , secrets :: Secrets
-       } deriving (Show, Generic)
+       } deriving (Show, Generic, Eq)
 
 
 instance JSON.FromJSON User
@@ -61,7 +60,7 @@ data VaultEntry =
         , ip6 :: T.Text
         , port :: Int
         , users :: [User]
-        } deriving (Show, Generic)
+        } deriving (Show, Generic, Eq)
 
 
 instance JSON.FromJSON VaultEntry 
@@ -69,7 +68,7 @@ instance JSON.ToJSON VaultEntry
 
 newtype Vault =
   Vault { vault :: [VaultEntry] 
-    } deriving (Show, Generic)
+    } deriving (Show, Generic, Eq)
 
 instance JSON.FromJSON Vault 
 instance JSON.ToJSON Vault
@@ -89,14 +88,8 @@ getQueue ves =
   concatMap s2 s1
 
 
-getVaultFile :: String -> IO T.Text
-getVaultFile fn = do   
-  contents <- System.IO.readFile fn      
-  return $ T.pack contents
-
-
-putVaultFile :: String -> BA.ScrubbedBytes -> Vault -> IO ()
-putVaultFile fn k v = encryptVault k v >>= \bs -> writeFile fn $ C.unpack bs
+putVaultFile :: BA.ScrubbedBytes -> String -> Vault -> IO ()
+putVaultFile k fn v = encryptVault k v >>= \bs -> writeFile fn $ C.unpack bs
 
 
 decryptVault :: BA.ScrubbedBytes -> String-> IO Vault
