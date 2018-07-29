@@ -38,7 +38,8 @@ library
         mtl -any,
         binary -any,
         random -any,
-        old-time -any
+        old-time -any,
+        base64-bytestring -any
 
 executable ssh-vault
     main-is: Main.hs
@@ -68,7 +69,8 @@ executable ssh-vault
         mtl -any,
         binary -any,
         random -any,
-        old-time -any
+        old-time -any,
+        base64-bytestring -any
 
 test-suite ssh-vault-tests
     type: exitcode-stdio-1.0
@@ -101,4 +103,5 @@ test-suite ssh-vault-tests
         mtl -any,
         binary -any,
         random -any,
-        old-time -any
+        old-time -any,
+        base64-bytestring -any

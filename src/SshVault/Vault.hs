@@ -23,6 +23,7 @@ import           SshVault.Common
 
 import qualified Data.Text as T
 import qualified Data.ByteString as B
+import qualified Data.ByteString.Base64 as B64
 import qualified Data.ByteString.Char8 as C
 import qualified Data.ByteString.UTF8 as CU
 import qualified Data.ByteArray as BA
@@ -30,9 +31,7 @@ import           Data.Maybe (fromMaybe)
 import qualified Data.Aeson as JSON
 import           GHC.Generics
 
-import           System.IO (writeFile)
-
-
+import Turtle
 
 data Secrets =
   Secrets { key_secret :: T.Text
@@ -89,15 +88,19 @@ getQueue ves =
 
 
 putVaultFile :: BA.ScrubbedBytes -> String -> Vault -> IO ()
-putVaultFile k fn v = encryptVault k v >>= \bs -> writeFile fn $ C.unpack bs
+putVaultFile k fn v = encryptVault k v >>= B.writeFile fn
 
 
-decryptVault :: BA.ScrubbedBytes -> String-> IO Vault
+--decryptVault :: BA.ScrubbedBytes -> String-> IO Either _
 decryptVault key fn = do
-  v <- B.readFile fn >>= \v' -> decryptAES (genAESKey $ toText key) v'
-  return . fromMaybe (error "failed to decrypt vault") . JSON.decode $ toLUBytes v
+  v <- B.readFile fn >>= \v' -> decryptAES (genAESKey $ SshVault.SBytes.toText key) v'
+  case B64.decode $ toBytes v of 
+    Left s' -> error s'
+    Right s' -> return . fromMaybe (error "failed to JSON.decode in decryptVault") . JSON.decode $ toLUBytes s'
  
 
 encryptVault :: BA.ScrubbedBytes -> Vault -> IO B.ByteString
-encryptVault k v = encryptAES (genAESKey $ toText k) (toBytes $ JSON.encode v)
+encryptVault k v = do
+  printf w (JSON.encode v)
+  encryptAES (genAESKey $ SshVault.SBytes.toText k) (B64.encode . toBytes $ JSON.encode v)
 
