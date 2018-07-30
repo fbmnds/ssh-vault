@@ -18,6 +18,7 @@ library
         SshVault.Vault
         SshVault.Workflows
         SshVault.SBytes
+        SshVault.CLI
     hs-source-dirs: src
     default-language: Haskell2010
     build-depends:
@@ -39,7 +40,8 @@ library
         binary -any,
         random -any,
         old-time -any,
-        base64-bytestring -any
+        base64-bytestring -any,
+        optparse-applicative -any
 
 executable ssh-vault
     main-is: Main.hs
@@ -49,6 +51,7 @@ executable ssh-vault
         SshVault.Vault
         SshVault.Workflows
         SshVault.SBytes
+        SshVault.CLI
     default-language: Haskell2010
     build-depends:
         ssh-vault -any,
@@ -70,7 +73,8 @@ executable ssh-vault
         binary -any,
         random -any,
         old-time -any,
-        base64-bytestring -any
+        base64-bytestring -any,
+        optparse-applicative -any
 
 test-suite ssh-vault-tests
     type: exitcode-stdio-1.0
@@ -81,6 +85,7 @@ test-suite ssh-vault-tests
         SshVault.Vault
         SshVault.Workflows
         SshVault.SBytes
+        SshVault.CLI
     default-language: Haskell2010
     ghc-options: -Wall -fno-warn-orphans -fno-warn-missing-signatures
                  -threaded -fprint-potential-instances
@@ -104,4 +109,5 @@ test-suite ssh-vault-tests
         binary -any,
         random -any,
         old-time -any,
-        base64-bytestring -any
+        base64-bytestring -any,
+        optparse-applicative -any

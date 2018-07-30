@@ -78,7 +78,8 @@ genSSHSecrets cfg qe = do
     printf "[*] ssh-keygen new SSH key file\n"
     procD
         "ssh-keygen"
-        [ "-n", user $ snd qe
+        [ "-I", "vault"
+        , "-n", user $ snd qe
         , "-t", "rsa"
         , "-b", "4096"
         , "-f", fn
