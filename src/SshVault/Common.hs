@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 --{-# LANGUAGE PackageImports -#}
-module SshVault.Common 
+module SshVault.Common
   (
     Config
   , VaultKeyHash
@@ -13,7 +13,7 @@ module SshVault.Common
   , getCfgHome
   , getCfgVaultFile
   , getCfgVaultKey
-  , procD 
+  , procD
   , shellD
   , rand1000
   , randS
@@ -25,15 +25,15 @@ import           SshVault.SBytes
 
 import qualified Data.Text as T
 import qualified Data.ByteString as B
-import qualified Data.ByteString.Lazy as BL
+--import qualified Data.ByteString.Lazy as BL
 import qualified Data.ByteArray as BA
 import qualified Data.ByteString.UTF8 as CU
-import           Data.Binary (decode)
+--import           Data.Binary (decode)
 
 import qualified Crypto.Simple.CTR as CTR
 import           Crypto.Hash (hash, SHA256 (..), Digest)
 
-import           Control.Exception (bracket_)
+--import           Control.Exception (bracket_)
 import           System.IO
 import           System.Random
 
@@ -63,7 +63,7 @@ decryptAES = CTR.decrypt
 
 
 genSHA256 :: T.Text -> String
-genSHA256 key = 
+genSHA256 key =
   let h :: Digest SHA256
       h = hash $ toBytes key in
   show h
@@ -101,21 +101,20 @@ getCfgVaultFile :: Config -> String
 getCfgVaultFile cfg = case cfg of (_,h,v) -> toString $ format (fp % s) h (toText v)
 
 getCfgVaultKey :: Config -> BA.ScrubbedBytes
-getCfgVaultKey cfg = case cfg of (x,_,_) -> x
+getCfgVaultKey cfg = case cfg of (vk,_,_) -> vk
 
 
 procD :: T.Text -> [T.Text] -> Tu.Shell Tu.Line -> IO ()
 procD a b c = do
-    e <- Tu.proc a b c
-    case e of
+    ec <- Tu.proc a b c
+    case ec of
         Tu.ExitFailure _ -> Tu.die $ Tu.format (s % s % w %s) "failed to execute: " a b "\n"
-        _ -> return ()    
+        _ -> return ()
 
 
 shellD :: T.Text -> Tu.Shell Tu.Line -> IO ()
 shellD a b = do
-    e <- Tu.shell a b
-    case e of
+    ec <- Tu.shell a b
+    case ec of
         Tu.ExitFailure _ -> Tu.die $ Tu.format (s % s %s) "failed to execute: " a "\n"
-        _ -> return () 
-
+        _ -> return ()
