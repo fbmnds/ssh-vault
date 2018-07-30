@@ -5,7 +5,7 @@ module SSHVault.Workflows
       uploadKeyCmd
     , genSSHFilename
     , chmodSSHFile
-    , genSSHSecrets
+    , genSSHKey
 
     )
     where
@@ -33,7 +33,7 @@ uploadKeyCmd cfg qe newKeyFile = format (s % s % s) p1 p2 p3
         h = fst qe
         u' = user $ snd qe
         ks = toText $ Cfg.keystore cfg
-        kf = toText . key_file . secrets $ snd qe
+        kf = toText . key_file . sshkey $ snd qe
         p1 = format ("cat " % s % "/" % s % ".pub") ks newKeyFile
         p2 = format (" | ssh -i " % s % "/" % s) ks kf
         p3 =
@@ -41,6 +41,8 @@ uploadKeyCmd cfg qe newKeyFile = format (s % s % s) p1 p2 p3
             format (" root@" % s % " \"cat >> /root/.ssh/authorized_keys\"") h
           else
             format (" " % s % "@" % s % " \"cat >> /home/" % s % "/.ssh/authorized_keys\"") u' h u'
+
+
 
 
 genSSHFilename :: Cfg.Config -> QueueEntry -> IO Text
@@ -70,8 +72,8 @@ procQueueEntry cfg q    -- q :: QueueEntry = "VaultEntry reduced to single user"
 
 -}
 
-genSSHSecrets :: Cfg.Config -> QueueEntry -> IO Secrets
-genSSHSecrets cfg qe = do
+genSSHKey :: Cfg.Config -> QueueEntry -> IO SSHKey
+genSSHKey cfg qe = do
     printf "[*] generate new SSH key password\n"
     pw <- randS 20
     printf "[*] generate new SSH key file name\n"
@@ -89,4 +91,4 @@ genSSHSecrets cfg qe = do
     printf "[+] new SSH secrets generated\n"
     chmodSSHFile fn
     printf "[+] chmod 600 on new SSH file\n"
-    return Secrets { key_secret = pw, key_file = fn }
+    return SSHKey { passphrase = pw, key_file = fn }

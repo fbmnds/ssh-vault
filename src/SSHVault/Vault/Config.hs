@@ -30,6 +30,6 @@ genDefaultConfig = do
   vdir <- Tu.home
   return Config {
         dir = toString $ format fp vdir
-      , file = toString (format fp vdir) ++ "/.vault"
+      , file = toString (format fp vdir) ++ "/.vault/vault"
       , keystore = toString (format fp vdir) ++ "/.vault/STORE"
       }

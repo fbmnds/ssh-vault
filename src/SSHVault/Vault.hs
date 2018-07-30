@@ -7,7 +7,7 @@ module SSHVault.Vault
     ( Vault (..)
     , VaultEntry (..)
     , User (..)
-    , Secrets (..)
+    , SSHKey (..)
     , Queue
     , QueueEntry
 --    , putVaultFile
@@ -37,17 +37,17 @@ import           GHC.Generics
 
 
 
-data Secrets =
-  Secrets { key_secret :: T.Text
-          , key_file :: T.Text
-          } deriving (Show, Generic, Eq)
-instance JSON.FromJSON Secrets
-instance JSON.ToJSON Secrets
+data SSHKey =
+  SSHKey { passphrase :: T.Text
+         , key_file :: T.Text
+         } deriving (Show, Generic, Eq)
+instance JSON.FromJSON SSHKey
+instance JSON.ToJSON SSHKey
 
 
 data User =
   User { user :: T.Text
-       , secrets :: Secrets
+       , sshkey :: SSHKey
        } deriving (Show, Generic, Eq)
 instance JSON.FromJSON User
 instance JSON.ToJSON User

@@ -11,7 +11,7 @@ import SSHVault.Vault
     ( Vault (..)
     , VaultEntry (..)
     , User (..)
-    , Secrets (..)
+    , SSHKey (..)
     , encryptVault
     , decryptVault
     )
@@ -41,11 +41,11 @@ done :: IO Tu.ExitCode
 done = Tu.shell "" ""
 
 
-updateVault01 :: Secrets -> Vault
+updateVault01 :: SSHKey -> Vault
 updateVault01 s01' =
   let
     s01 = s01'
-    s02 = Secrets "a*box1******" "/home/a/.ssh/id_box1"
+    s02 = SSHKey "a*box1******" "/home/a/.ssh/id_box1"
     u01 = User "root" s01
     u02 = User "a" s02
     ve0 = VaultEntry  "box1" "" "" "" 22 [u01,u02] in
@@ -94,9 +94,9 @@ genTestConfig :: IO Cfg.Config
 genTestConfig = do
   vdir <- Tu.pwd
   return Cfg.Config {
-        Cfg.dir = toString (format fp vdir) ++ "/tests/"
-      , Cfg.file = toString (format fp vdir) ++ "/tests/.vault"
-      , Cfg.keystore = toString (format fp vdir) ++ "/tests/.vault/STORE"
+        Cfg.dir = toString (format fp vdir) ++ "/tests/data"
+      , Cfg.file = toString (format fp vdir) ++ "/tests/data/.vault"
+      , Cfg.keystore = toString (format fp vdir) ++ "/tests/data/.vault/STORE"
       }
 
 
@@ -118,12 +118,12 @@ test1 = do
   h <- Tu.home
   let fn = toString (format fp h) ++ "/.ssh/vault" ++ ".NEW"
       vk = "0123456789" :: T.Text
-      u' = User "root" $ Secrets "root*box1***" "/root/.ssh/id_box1"
+      u' = User "root" $ SSHKey "root*box1***" "/root/.ssh/id_box1"
 
   dcfg <- genTestConfig
-  s' <- genSSHSecrets dcfg ("root", u')
-  let v1 = updateVault01 (Secrets (toText . B64.encode . toBytes $ key_secret s') (key_file s'))
-  printf s "+++ OK, passed genSSHSecrets test.\n"
+  s' <- genSSHKey dcfg ("root", u')
+  let v1 = updateVault01 (SSHKey (toText . B64.encode . toBytes $ passphrase s') (key_file s'))
+  printf s "+++ OK, passed genSSHKey test.\n"
 
   encryptVault (toSBytes $ genAESKey vk) fn v1
   printf s "[*] encryptVault\n"
