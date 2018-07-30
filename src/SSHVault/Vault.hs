@@ -23,7 +23,7 @@ where
 import           SSHVault.SBytes
 import           SSHVault.Common
 
-import qualified Data.Text as T
+--import qualified Data.Text as T
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Base64 as B64
 --import qualified Data.ByteString.Char8 as C
@@ -38,27 +38,27 @@ import           GHC.Generics
 
 
 data SSHKey =
-  SSHKey { passphrase :: T.Text
-         , key_file :: T.Text
+  SSHKey { passphrase :: String
+         , key_file :: String
          } deriving (Show, Generic, Eq)
 instance JSON.FromJSON SSHKey
 instance JSON.ToJSON SSHKey
 
 
 data User =
-  User { user :: T.Text
+  User { user :: String
        , sshkey :: SSHKey
        } deriving (Show, Generic, Eq)
 instance JSON.FromJSON User
 instance JSON.ToJSON User
 
 
-type Host = T.Text
+type Host = String
 data VaultEntry =
   VaultEntry { host  :: Host
-        , host_key :: T.Text
-        , ip4 :: T.Text
-        , ip6 :: T.Text
+        , host_key :: String
+        , ip4 :: String
+        , ip6 :: String
         , port :: Int
         , users :: [User]
         } deriving (Show, Generic, Eq)

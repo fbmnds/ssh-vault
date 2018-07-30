@@ -2,11 +2,10 @@
 {-# LANGUAGE OverloadedStrings #-}
 module SSHVault.Workflows
     (
-      uploadKeyCmd
+      uploadSSHKey
     , genSSHFilename
     , chmodSSHFile
     , genSSHKey
-
     )
     where
 
@@ -18,7 +17,7 @@ import SSHVault.Common
 import qualified Network.SSH.Client.SimpleSSH as SSH
 
 --import Data.Maybe (fromMaybe)
-import Data.Text (Text)
+import Data.Text (split)
 --import qualified Data.ByteArray as BA
 
 import qualified Turtle as Tu
@@ -27,31 +26,35 @@ import           Turtle.Format
 --import           Turtle.Line (lineToText)
 
 
-uploadKeyCmd :: Cfg.Config -> QueueEntry -> Text -> Text
-uploadKeyCmd cfg qe newKeyFile = format (s % s % s) p1 p2 p3
-    where
-        h = fst qe
+
+--uploadSSHKey :: QueueEntry -> SSHKey -> IO SSH.Session
+uploadSSHKey qe nkey =
+    SSH.openSession (fst qe) 22 "~/.ssh/known_hosts"
+    >>= \ ss -> SSH.authenticateWithKey ss u' pub priv ph
+    >>= \ ss' ->
+        let _ = SSH.sendFile ss' 0o600 pub' "~/.ssh" in
+        (\ ss'' ->
+            let _ = SSH.execCommand ss'' $ "cat ~/.ssh/" ++ pub'' ++ " >> ~/.ssh/authorized_keys"
+                _ = SSH.execCommand ss'' $ "rm ~/.ssh/" ++ pub''
+        in return ())
+        ss
+      where
         u' = user $ snd qe
-        ks = toText $ Cfg.keystore cfg
-        kf = toText . key_file . sshkey $ snd qe
-        p1 = format ("cat " % s % "/" % s % ".pub") ks newKeyFile
-        p2 = format (" | ssh -i " % s % "/" % s) ks kf
-        p3 =
-          if u' == "root" then
-            format (" root@" % s % " \"cat >> /root/.ssh/authorized_keys\"") h
-          else
-            format (" " % s % "@" % s % " \"cat >> /home/" % s % "/.ssh/authorized_keys\"") u' h u'
+        s' = sshkey $ snd qe
+        ph = passphrase s'
+        priv = key_file s'
+        pub = priv ++ ".pub"
+        pub' = key_file nkey ++ ".pub"
+        pub'' = toString . last $ split (=='/') (toText pub')
 
 
-
-
-genSSHFilename :: Cfg.Config -> QueueEntry -> IO Text
+genSSHFilename :: Cfg.Config -> QueueEntry -> IO String
 genSSHFilename cfg qe = do
     date <- Tu.date
-    let ud = format (s%w) (user $ snd qe) date
-    let kn = toText . genSHA256 $ format (s %s) (fst qe) ud
+    let ud = format (s%w) (toText . user $ snd qe) date
+    let kn = toText . genSHA256 $ format (s %s) (toText $ fst qe) ud
     let fn = format (s % s % s) (toText $ Cfg.keystore cfg) "/id" kn
-    return fn
+    return $ toString fn
 
 
 chmodSSHFile :: ToSBytes a => a -> IO ()

@@ -46,8 +46,8 @@ rand1000 :: Int -> IO [Int]
 rand1000 n = take n . randomRs (0, 999) <$> newStdGen
 
 
-randS :: Int -> IO T.Text
-randS n = toText . take n . randomRs (' ','~') <$> newStdGen
+randS :: Int -> IO String
+randS n = take n . randomRs (' ','~') <$> newStdGen
 
 
 encryptAES :: CU.ByteString -> CU.ByteString -> IO CU.ByteString
