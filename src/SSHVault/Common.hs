@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 --{-# LANGUAGE PackageImports -#}
-module SshVault.Common
+module SSHVault.Common
   (
     Config
   , VaultKeyHash
@@ -22,7 +22,7 @@ module SshVault.Common
 
 where
 
-import           SshVault.SBytes
+import           SSHVault.SBytes
 
 import qualified Data.Text as T
 import qualified Data.ByteString as B

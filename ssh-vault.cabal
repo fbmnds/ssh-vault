@@ -14,11 +14,11 @@ extra-source-files:
 
 library
     exposed-modules:
-        SshVault.Common
-        SshVault.Vault
-        SshVault.Workflows
-        SshVault.SBytes
-        SshVault.CLI
+        SSHVault.Common
+        SSHVault.Vault
+        SSHVault.Workflows
+        SSHVault.SBytes
+        SSHVault.CLI
     hs-source-dirs: src
     default-language: Haskell2010
     build-depends:
@@ -47,11 +47,11 @@ executable ssh-vault
     main-is: Main.hs
     hs-source-dirs: . src . src
     other-modules:
-        SshVault.Common
-        SshVault.Vault
-        SshVault.Workflows
-        SshVault.SBytes
-        SshVault.CLI
+        SSHVault.Common
+        SSHVault.Vault
+        SSHVault.Workflows
+        SSHVault.SBytes
+        SSHVault.CLI
     default-language: Haskell2010
     build-depends:
         ssh-vault -any,
@@ -81,11 +81,11 @@ test-suite ssh-vault-tests
     main-is: Tests.hs
     hs-source-dirs: tests src
     other-modules:
-        SshVault.Common
-        SshVault.Vault
-        SshVault.Workflows
-        SshVault.SBytes
-        SshVault.CLI
+        SSHVault.Common
+        SSHVault.Vault
+        SSHVault.Workflows
+        SSHVault.SBytes
+        SSHVault.CLI
     default-language: Haskell2010
     ghc-options: -Wall -fno-warn-orphans -fno-warn-missing-signatures
                  -threaded -fprint-potential-instances

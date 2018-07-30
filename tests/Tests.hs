@@ -7,20 +7,17 @@ module Main where
 --import Control.Exception (SomeException, catch)
 
 
-import SshVault.Vault
+import SSHVault.Vault
     ( Vault (..)
     , VaultEntry (..)
     , User (..)
     , Secrets (..)
---    , putVaultFile'
---    , getVaultFile
     , encryptVault
---    , encryptVault
     , decryptVault
     )
-import SshVault.Workflows
-import SshVault.SBytes
-import SshVault.Common
+import SSHVault.Workflows
+import SSHVault.SBytes
+import SSHVault.Common
 
 import qualified Data.Text as T
 import qualified Data.ByteString as B
@@ -69,7 +66,7 @@ prop_scrubbedbytes t =
     `eq` toSBytes (toLUBytes t'')
     ==   toBytes t''
     `eq` toBytes (toLUBytes t'')
-  where t'  = SshVault.SBytes.toText t
+  where t'  = SSHVault.SBytes.toText t
         t'' = toBytes t
 
 

@@ -1,6 +1,6 @@
 -- :set -XOverloadedStrings
 {-# LANGUAGE OverloadedStrings #-}
-module SshVault.Workflows
+module SSHVault.Workflows
     (
       uploadKeyCmd
     , genSSHFilename
@@ -10,9 +10,9 @@ module SshVault.Workflows
     )
     where
 
-import SshVault.Vault
-import SshVault.SBytes
-import SshVault.Common
+import SSHVault.Vault
+import SSHVault.SBytes
+import SSHVault.Common
 
 --import Data.Maybe (fromMaybe)
 import Data.Text (Text)

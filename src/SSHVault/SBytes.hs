@@ -1,7 +1,7 @@
 {-# LANGUAGE TypeSynonymInstances #-}
 {-# LANGUAGE FlexibleInstances #-}
 
-module SshVault.SBytes where
+module SSHVault.SBytes where
 
 
 import qualified Data.Text as T
@@ -28,15 +28,15 @@ instance ToSBytes B.ByteString where
   toText    = T.pack . C.unpack
 
 instance ToSBytes T.Text where
-  toSBytes = BA.convert . C.pack . T.unpack 
+  toSBytes = BA.convert . C.pack . T.unpack
   toString = T.unpack
   toBytes  = BA.convert . toSBytes
-  toLUBytes = toLUBytes . toBytes 
+  toLUBytes = toLUBytes . toBytes
   toText    = id
 
 
 instance ToSBytes String where
-  toSBytes = BA.convert . C.pack 
+  toSBytes = BA.convert . C.pack
   toString = id
   toBytes  = C.pack
   toLUBytes = CLU.fromString

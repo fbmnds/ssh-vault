@@ -1,6 +1,6 @@
 module Main where
 
-import SshVault.CLI
+import SSHVault.CLI
 
 main :: IO ()
 main = cli

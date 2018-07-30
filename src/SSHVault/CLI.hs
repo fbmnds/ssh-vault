@@ -1,6 +1,6 @@
 {-#LANGUAGE ScopedTypeVariables#-}
 
-module SshVault.CLI (cli)
+module SSHVault.CLI (cli)
     where
 
 import Data.Semigroup ((<>))

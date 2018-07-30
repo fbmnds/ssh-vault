@@ -3,7 +3,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TupleSections #-}
 {-# LANGUAGE DeriveGeneric #-}
-module SshVault.Vault
+module SSHVault.Vault
     ( Vault (..)
     , VaultEntry (..)
     , User (..)
@@ -20,8 +20,8 @@ module SshVault.Vault
     )
 where
 
-import           SshVault.SBytes
-import           SshVault.Common
+import           SSHVault.SBytes
+import           SSHVault.Common
 
 import qualified Data.Text as T
 import qualified Data.ByteString as B
@@ -98,13 +98,13 @@ updateVault ve v = v { vault = filter (\ve' -> host ve' == hn) (vault v) ++ [ve]
 
 decryptVault :: (ToSBytes a, JSON.FromJSON b) => a -> Prelude.FilePath -> IO b
 decryptVault key fn = do
-  v <- B.readFile fn >>= \v' -> decryptAES (genAESKey $ SshVault.SBytes.toText key) v'
+  v <- B.readFile fn >>= \v' -> decryptAES (genAESKey $ SSHVault.SBytes.toText key) v'
   case B64.decode v of
     Left s' -> error s'
     Right s' -> return . fromMaybe (error "failed to JSON.decode in decryptVault") . JSON.decode $ toLUBytes s'
 
 encryptVault :: BA.ScrubbedBytes -> String -> Vault -> IO ()
 encryptVault k fn v =
-  encryptAES (genAESKey $ SshVault.SBytes.toText k) (B64.encode . toBytes $ JSON.encode v)
+  encryptAES (genAESKey $ SSHVault.SBytes.toText k) (B64.encode . toBytes $ JSON.encode v)
   >>= B.writeFile fn
   >> chmodFile ("600" :: String) fn
