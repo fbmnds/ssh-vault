@@ -18,6 +18,7 @@ module SSHVault.Common
   , rand1000
   , randS
   , chmodFile
+  , take2nd
   )
 
 where
@@ -46,6 +47,9 @@ type VaultKeyHash = B.ByteString
 type Config = (BA.ScrubbedBytes, Tu.FilePath, String)
 
 
+take2nd :: [a] -> [a]
+take2nd (_ : _ : x' : y' : xs') = x' : y' : take2nd xs'
+take2nd _ = []
 
 rand1000 :: Int -> IO [Int]
 rand1000 n = take n . randomRs (0, 999) <$> newStdGen
@@ -69,9 +73,8 @@ genSHA256 key =
       h = hash $ toBytes key in
   show h
 
-
 genAESKey :: T.Text -> B.ByteString
-genAESKey key = CU.take 32 . toBytes $ genSHA256 key
+genAESKey key = toBytes . take2nd $ genSHA256 key
 
 
 getKeyPhrase :: IO B.ByteString
