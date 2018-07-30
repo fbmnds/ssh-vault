@@ -27,7 +27,7 @@ import           Turtle.Format
 uploadKeyCmd :: Text -> Text -> Text -> Text -> Text -> Text
 uploadKeyCmd home newKeyFile currKeyFile user' host' = format (s % s % s) p1 p2 p3
     where
-        p1 = format ("cat " % s % "/.ssh/" % s % ".pub") home newKeyFile
+        p1 = format ("cat " % s % "/.ssh/NEWKEYS" % s % ".pub") home newKeyFile
         p2 = format (" | ssh -i " % s % "/.ssh/" % s) home currKeyFile
         p3 =
             if user' == "root" then
@@ -51,8 +51,8 @@ genSSHFilename cfg qe = do
     return fn
 
 
-chmodSSHFile :: Text -> IO ()
-chmodSSHFile fn = procD "chmod" ["600", fn] Tu.empty
+chmodSSHFile :: ToSBytes a => a -> IO ()
+chmodSSHFile = chmodFile ("600" :: String)
 
 
 {-
@@ -72,7 +72,7 @@ procQueueEntry cfg q    -- q :: QueueEntry = "VaultEntry reduced to single user"
 genSSHSecrets :: Config -> QueueEntry -> IO Secrets
 genSSHSecrets cfg qe = do
     printf "[*] generate new SSH key password\n"
-    passwd <- randS 20
+    pw <- randS 20
     printf "[*] generate new SSH key file name\n"
     fn <- genSSHFilename cfg qe
     printf "[*] ssh-keygen new SSH key file\n"
@@ -82,10 +82,10 @@ genSSHSecrets cfg qe = do
         , "-t", "rsa"
         , "-b", "4096"
         , "-f", fn
-        , "-P", passwd
+        , "-P", pw
         ]
         Tu.empty
-    printf "[+] new SSH secrets generated"
+    printf "[+] new SSH secrets generated\n"
     chmodSSHFile fn
-    printf "[+] chmod 660 on new SSH file"
-    return Secrets {key_secret=passwd, key_file=fn}
+    printf "[+] chmod 600 on new SSH file\n"
+    return Secrets { key_secret = pw, key_file = fn }

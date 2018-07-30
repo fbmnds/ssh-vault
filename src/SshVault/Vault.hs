@@ -10,7 +10,7 @@ module SshVault.Vault
     , Secrets (..)
     , Queue
     , QueueEntry
-    , putVaultFile
+--    , putVaultFile
     , encryptVault
     , decryptVault
     , updateUsers
@@ -33,7 +33,7 @@ import           Data.Maybe (fromMaybe)
 import qualified Data.Aeson as JSON
 import           GHC.Generics
 
-import Turtle
+--import Turtle
 
 
 
@@ -96,19 +96,15 @@ updateVault :: VaultEntry -> Vault -> Vault
 updateVault ve v = v { vault = filter (\ve' -> host ve' == hn) (vault v) ++ [ve] } where hn = host ve
 
 
-putVaultFile :: BA.ScrubbedBytes -> String -> Vault -> IO ()
-putVaultFile k fn v = encryptVault k v >>= B.writeFile fn
-
-
 decryptVault :: (ToSBytes a, JSON.FromJSON b) => a -> Prelude.FilePath -> IO b
 decryptVault key fn = do
   v <- B.readFile fn >>= \v' -> decryptAES (genAESKey $ SshVault.SBytes.toText key) v'
-  case B64.decode $ toBytes v of
+  case B64.decode v of
     Left s' -> error s'
     Right s' -> return . fromMaybe (error "failed to JSON.decode in decryptVault") . JSON.decode $ toLUBytes s'
 
-
-encryptVault :: BA.ScrubbedBytes -> Vault -> IO B.ByteString
-encryptVault k v = do
-  printf w (JSON.encode v)
+encryptVault :: BA.ScrubbedBytes -> String -> Vault -> IO ()
+encryptVault k fn v =
   encryptAES (genAESKey $ SshVault.SBytes.toText k) (B64.encode . toBytes $ JSON.encode v)
+  >>= B.writeFile fn
+  >> chmodFile ("600" :: String) fn

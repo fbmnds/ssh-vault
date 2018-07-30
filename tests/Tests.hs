@@ -14,7 +14,7 @@ import SshVault.Vault
     , Secrets (..)
 --    , putVaultFile'
 --    , getVaultFile
---    , putVaultFile
+    , encryptVault
 --    , encryptVault
     , decryptVault
     )
@@ -22,10 +22,7 @@ import SshVault.Workflows
 import SshVault.SBytes
 import SshVault.Common
 
-
-import Turtle
---import Turtle.Format
---import Turtle.Prelude
+import qualified Data.Text as T
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Base64 as B64
 import Data.ByteArray (eq)
@@ -35,15 +32,16 @@ import Data.Aeson
 
 import Test.QuickCheck
 
-
+import qualified Turtle as Tu
+import Turtle.Format
 
 instance Arbitrary B.ByteString where arbitrary = B.pack <$> arbitrary
 instance CoArbitrary B.ByteString where coarbitrary = coarbitrary . B.unpack
 
 
 
-done :: IO ExitCode
-done = shell "" ""
+done :: IO Tu.ExitCode
+done = Tu.shell "" ""
 
 
 updateVault01 :: Secrets -> Vault
@@ -79,15 +77,15 @@ decodeVaultFromJSON :: () -> IO Vault
 decodeVaultFromJSON _ = do
   vsc' <- B.readFile "./tests/data/vault0.json"
   let vsc = toSBytes vsc'
-  let (v :: Vault) =
+  let v =
         fromMaybe
-          (error "decodeVaultFromJSON: failed to parse Vault decode $ encode")
+          (error "decodeVaultFromJSON: failed to parse Vault decode $ encode\n")
           . decode $ toLUBytes vsc
   printf s "+++ OK, passed JSON decode test.\n"
   return v
 
 
-getHosts :: Vault -> [Text]
+getHosts :: Vault -> [T.Text]
 getHosts = fmap host . vault
 
 testGetHost :: Vault -> IO ()
@@ -110,31 +108,22 @@ test0 = do
 
 test1 :: IO ()
 test1 = do
-  let vk = "0123456789" :: Text
-  h <- home
+  h <- Tu.home
   let cfg = (toSBytes vk, h, "/.ssh/vault") :: Config
-  let vkey = toSBytes $ getCfgVaultKey cfg
-  let fn = getCfgVaultFile cfg
-  let u' = User "root" $ Secrets "root*box1***" "/root/.ssh/id_box1"
+      fn = getCfgVaultFile cfg ++ ".NEW"
+      vk = "0123456789" :: T.Text
+      u' = User "root" $ Secrets "root*box1***" "/root/.ssh/id_box1"
+
   s' <- genSSHSecrets cfg ("root", u')
+  let v1 = updateVault01 (Secrets (toText . B64.encode . toBytes $ key_secret s') (key_file s'))
   printf s "+++ OK, passed genSSHSecrets test.\n"
-  let v1 = updateVault01 (Secrets (SshVault.SBytes.toText . B64.encode . SshVault.SBytes.toBytes $ key_secret s') (key_file s'))
-  printf s "+++ OK, passed putVaultFile test.\n"
-  v2 <- decryptVault vkey fn
+
+  encryptVault (toSBytes $ genAESKey vk) fn v1
+  printf s "[*] encryptVault\n"
+  v2 <- decryptVault (toSBytes $ genAESKey vk) fn
   if v1 == v2 then printf s "+++ OK, passed decryptVault test.\n" else
-    printf s "-- ERR, TODO VERIFY SECRET CHANGE IS OK failed decryptVault test.\n"
+    printf s "-- ERR, failed decryptVault test.\n"
 
-{-
-safeVault :: Config -> Vault -> IO ()
-safeVault cfg v = do
-    let fn = toString $ format (fp % w) (getCfgHome cfg) (getCfgVault cfg)
-    putVaultFile fn (getCfgVKey cfg) v
-
-readVault :: Config -> IO Vault
-readVault cfg = do
-    let fn = toString $ format (fp % w) (getCfgHome cfg) (getCfgVault cfg)
-    decryptVault (getCfgVKey cfg) fn
--}
 
 main :: IO ()
 main = do

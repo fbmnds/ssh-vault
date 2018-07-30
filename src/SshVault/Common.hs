@@ -17,6 +17,7 @@ module SshVault.Common
   , shellD
   , rand1000
   , randS
+  , chmodFile
   )
 
 where
@@ -104,17 +105,19 @@ getCfgVaultKey :: Config -> BA.ScrubbedBytes
 getCfgVaultKey cfg = case cfg of (vk,_,_) -> vk
 
 
-procD :: T.Text -> [T.Text] -> Tu.Shell Tu.Line -> IO ()
+procD :: ToSBytes a => a -> [a] -> Tu.Shell Tu.Line -> IO ()
 procD a b c = do
-    ec <- Tu.proc a b c
+    ec <- Tu.proc (toText a) (map toText b) c
     case ec of
-        Tu.ExitFailure _ -> Tu.die $ Tu.format (s % s % w %s) "failed to execute: " a b "\n"
+        Tu.ExitFailure _ -> Tu.die $ Tu.format (s % s % w %s) "failed to execute: " (toText a) (map toText b) "\n"
         _ -> return ()
 
-
-shellD :: T.Text -> Tu.Shell Tu.Line -> IO ()
+shellD :: ToSBytes a => a -> Tu.Shell Tu.Line -> IO ()
 shellD a b = do
-    ec <- Tu.shell a b
+    ec <- Tu.shell (toText a) b
     case ec of
-        Tu.ExitFailure _ -> Tu.die $ Tu.format (s % s %s) "failed to execute: " a "\n"
+        Tu.ExitFailure _ -> Tu.die $ Tu.format (s % s %s) "failed to execute: " (toText a) "\n"
         _ -> return ()
+
+chmodFile :: (ToSBytes a, ToSBytes b) => a -> b -> IO ()
+chmodFile m fn = procD ("chmod" :: Tu.Text) [toText m, toText fn] Tu.empty
