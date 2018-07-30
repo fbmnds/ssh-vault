@@ -1,18 +1,11 @@
 {-# LANGUAGE OverloadedStrings #-}
 --{-# LANGUAGE PackageImports -#}
 module SSHVault.Common
-  (
-    Config
-  , VaultKeyHash
-  , encryptAES
+  ( encryptAES
   , decryptAES
   , genAESKey
   , genSHA256
   , getKeyPhrase
-  , getConfig
-  , getCfgHome
-  , getCfgVaultFile
-  , getCfgVaultKey
   , procD
   , shellD
   , rand1000
@@ -43,8 +36,6 @@ import qualified Turtle.Prelude as Tu
 import qualified Turtle as Tu
 import           Turtle.Format
 
-type VaultKeyHash = B.ByteString
-type Config = (BA.ScrubbedBytes, Tu.FilePath, String)
 
 
 take2nd :: [a] -> [a]
@@ -88,24 +79,6 @@ getKeyPhrase = do
   hFlush stdout
   hSetEcho stdin old
   return . genAESKey $ toText keyPhrase
-
-
-getConfig :: IO Config
-getConfig = do
-  putStrLn "getConfig ###"
-  vaultKeyHash <- getKeyPhrase
-  putStrLn "getConfig"
-  home <- Tu.home
-  return (toSBytes vaultKeyHash, home, "/.ssh/vault")
-
-getCfgHome :: Config -> Tu.FilePath
-getCfgHome cfg = case cfg of (_,x',_) -> x'
-
-getCfgVaultFile :: Config -> String
-getCfgVaultFile cfg = case cfg of (_,h,v) -> toString $ format (fp % s) h (toText v)
-
-getCfgVaultKey :: Config -> BA.ScrubbedBytes
-getCfgVaultKey cfg = case cfg of (vk,_,_) -> vk
 
 
 procD :: ToSBytes a => a -> [a] -> Tu.Shell Tu.Line -> IO ()

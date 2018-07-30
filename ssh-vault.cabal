@@ -16,6 +16,7 @@ library
     exposed-modules:
         SSHVault.Common
         SSHVault.Vault
+        SSHVault.Vault.Config
         SSHVault.Workflows
         SSHVault.SBytes
         SSHVault.CLI
@@ -41,7 +42,8 @@ library
         random -any,
         old-time -any,
         base64-bytestring -any,
-        optparse-applicative -any
+        optparse-applicative -any,
+        simplessh -any
 
 executable ssh-vault
     main-is: Main.hs
@@ -49,6 +51,7 @@ executable ssh-vault
     other-modules:
         SSHVault.Common
         SSHVault.Vault
+        SSHVault.Vault.Config
         SSHVault.Workflows
         SSHVault.SBytes
         SSHVault.CLI
@@ -74,7 +77,8 @@ executable ssh-vault
         random -any,
         old-time -any,
         base64-bytestring -any,
-        optparse-applicative -any
+        optparse-applicative -any,
+        simplessh -any
 
 test-suite ssh-vault-tests
     type: exitcode-stdio-1.0
@@ -83,6 +87,7 @@ test-suite ssh-vault-tests
     other-modules:
         SSHVault.Common
         SSHVault.Vault
+        SSHVault.Vault.Config
         SSHVault.Workflows
         SSHVault.SBytes
         SSHVault.CLI
@@ -110,4 +115,5 @@ test-suite ssh-vault-tests
         random -any,
         old-time -any,
         base64-bytestring -any,
-        optparse-applicative -any
+        optparse-applicative -any,
+        simplessh -any

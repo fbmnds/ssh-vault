@@ -6,7 +6,7 @@ module Main where
 
 --import Control.Exception (SomeException, catch)
 
-
+import qualified SSHVault.Vault.Config as Cfg
 import SSHVault.Vault
     ( Vault (..)
     , VaultEntry (..)
@@ -90,6 +90,16 @@ testGetHost v = case getHosts v of
   ["box1","box2","box3"] -> printf s "+++ OK, passed getHost test.\n"
   _                      -> error "--- ERR, failed getHost test.\n"
 
+genTestConfig :: IO Cfg.Config
+genTestConfig = do
+  vdir <- Tu.pwd
+  return Cfg.Config {
+        Cfg.dir = toString (format fp vdir) ++ "/tests/"
+      , Cfg.file = toString (format fp vdir) ++ "/tests/.vault"
+      , Cfg.keystore = toString (format fp vdir) ++ "/tests/.vault/STORE"
+      }
+
+
 test0 :: IO ()
 test0 = do
   v <- decodeVaultFromJSON ()
@@ -106,12 +116,12 @@ test0 = do
 test1 :: IO ()
 test1 = do
   h <- Tu.home
-  let cfg = (toSBytes vk, h, "/.ssh/vault") :: Config
-      fn = getCfgVaultFile cfg ++ ".NEW"
+  let fn = toString (format fp h) ++ "/.ssh/vault" ++ ".NEW"
       vk = "0123456789" :: T.Text
       u' = User "root" $ Secrets "root*box1***" "/root/.ssh/id_box1"
 
-  s' <- genSSHSecrets cfg ("root", u')
+  dcfg <- genTestConfig
+  s' <- genSSHSecrets dcfg ("root", u')
   let v1 = updateVault01 (Secrets (toText . B64.encode . toBytes $ key_secret s') (key_file s'))
   printf s "+++ OK, passed genSSHSecrets test.\n"
 

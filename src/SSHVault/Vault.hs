@@ -96,7 +96,7 @@ updateVault :: VaultEntry -> Vault -> Vault
 updateVault ve v = v { vault = filter (\ve' -> host ve' == hn) (vault v) ++ [ve] } where hn = host ve
 
 
-decryptVault :: (ToSBytes a, JSON.FromJSON b) => a -> Prelude.FilePath -> IO b
+decryptVault :: (ToSBytes a, JSON.FromJSON b) => a -> String -> IO b
 decryptVault key fn = do
   v <- B.readFile fn >>= \v' -> decryptAES (genAESKey $ SSHVault.SBytes.toText key) v'
   case B64.decode v of

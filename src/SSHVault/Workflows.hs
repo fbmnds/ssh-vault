@@ -11,8 +11,11 @@ module SSHVault.Workflows
     where
 
 import SSHVault.Vault
+import SSHVault.Vault.Config as Cfg
 import SSHVault.SBytes
 import SSHVault.Common
+
+import qualified Network.SSH.Client.SimpleSSH as SSH
 
 --import Data.Maybe (fromMaybe)
 import Data.Text (Text)
@@ -24,30 +27,28 @@ import           Turtle.Format
 --import           Turtle.Line (lineToText)
 
 
-uploadKeyCmd :: Text -> Text -> Text -> Text -> Text -> Text
-uploadKeyCmd home newKeyFile currKeyFile user' host' = format (s % s % s) p1 p2 p3
+uploadKeyCmd :: Cfg.Config -> QueueEntry -> Text -> Text
+uploadKeyCmd cfg qe newKeyFile = format (s % s % s) p1 p2 p3
     where
-        p1 = format ("cat " % s % "/.ssh/NEWKEYS" % s % ".pub") home newKeyFile
-        p2 = format (" | ssh -i " % s % "/.ssh/" % s) home currKeyFile
+        h = fst qe
+        u' = user $ snd qe
+        ks = toText $ Cfg.keystore cfg
+        kf = toText . key_file . secrets $ snd qe
+        p1 = format ("cat " % s % "/" % s % ".pub") ks newKeyFile
+        p2 = format (" | ssh -i " % s % "/" % s) ks kf
         p3 =
-            if user' == "root" then
-                format (
-                    " root@" % s %
-                    " \"cat >> /root/.ssh/authorized_keys\""
-                    ) host'
-            else
-                format (
-                    " " % s % "@" % s %
-                    " \"cat >> /home/" % s % "/.ssh/authorized_keys\""
-                    ) user' host' user'
+          if u' == "root" then
+            format (" root@" % s % " \"cat >> /root/.ssh/authorized_keys\"") h
+          else
+            format (" " % s % "@" % s % " \"cat >> /home/" % s % "/.ssh/authorized_keys\"") u' h u'
 
 
-genSSHFilename :: Config -> QueueEntry -> IO Text
+genSSHFilename :: Cfg.Config -> QueueEntry -> IO Text
 genSSHFilename cfg qe = do
     date <- Tu.date
     let ud = format (s%w) (user $ snd qe) date
     let kn = toText . genSHA256 $ format (s %s) (fst qe) ud
-    let fn = format (fp % s % s) (getCfgHome cfg) "/.ssh/NEWKEYS/id" kn
+    let fn = format (s % s % s) (toText $ Cfg.keystore cfg) "/id" kn
     return fn
 
 
@@ -69,7 +70,7 @@ procQueueEntry cfg q    -- q :: QueueEntry = "VaultEntry reduced to single user"
 
 -}
 
-genSSHSecrets :: Config -> QueueEntry -> IO Secrets
+genSSHSecrets :: Cfg.Config -> QueueEntry -> IO Secrets
 genSSHSecrets cfg qe = do
     printf "[*] generate new SSH key password\n"
     pw <- randS 20
