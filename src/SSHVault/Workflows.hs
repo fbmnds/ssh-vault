@@ -18,6 +18,7 @@ import qualified Network.SSH.Client.SimpleSSH as SSH
 
 --import Data.Maybe (fromMaybe)
 import Data.Text (split)
+import qualified Data.ByteString.Base64 as B64
 --import qualified Data.ByteArray as BA
 
 import qualified Turtle as Tu
@@ -41,7 +42,9 @@ uploadSSHKey qe nkey =
       where
         u' = user $ snd qe
         s' = sshkey $ snd qe
-        ph = passphrase s'
+        ph = case B64.decode . toBytes $ phrase64 s' of
+            Left _ -> error "uploadSSHKey failed to B64.decode key passphrase"
+            Right s0 -> toString s0
         priv = key_file s'
         pub = priv ++ ".pub"
         pub' = key_file nkey ++ ".pub"
@@ -78,7 +81,8 @@ procQueueEntry cfg q    -- q :: QueueEntry = "VaultEntry reduced to single user"
 genSSHKey :: Cfg.Config -> QueueEntry -> IO SSHKey
 genSSHKey cfg qe = do
     printf "[*] generate new SSH key password\n"
-    pw <- randS 20
+    pw' <- randS 20
+    let pw = toString . B64.encode $ toBytes pw'
     printf "[*] generate new SSH key file name\n"
     fn <- genSSHFilename cfg qe
     printf "[*] ssh-keygen new SSH key file\n"
@@ -94,4 +98,4 @@ genSSHKey cfg qe = do
     printf "[+] new SSH secrets generated\n"
     chmodSSHFile fn
     printf "[+] chmod 600 on new SSH file\n"
-    return SSHKey { passphrase = pw, key_file = fn }
+    return SSHKey { phrase64 = pw, key_file = fn }

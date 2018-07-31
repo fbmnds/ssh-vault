@@ -9,13 +9,13 @@
 			"users" : [
 				{   "user": "root",
 					"sshkey": {
-					    "passphrase": "root*box1***",
+					    "phrase64": "cm9vdCpib3gxKioq",
 					    "key_file": "/root/.ssh/id_box1"
 					}
 				},
 				{   "user": "a",
 				    "sshkey": {
-					    "passphrase": "a*box1******",
+					    "phrase64": "YSpib3gxKioqKioq",
 					    "key_file": "/home/a/.ssh/id_box1"
 					}
 				}
@@ -30,13 +30,13 @@
 			"users" : [
 				{   "user": "root",
 					"sshkey" : {
-					    "passphrase": "root*box2***",
+					    "phrase64": "cm9vdCpib3gyKioq",
 					    "key_file": "/root/.ssh/id_box2"
 					}
 				},
 				{   "user": "b",
 					"sshkey" : {
-					    "passphrase": "b*box2******",
+					    "phrase64": "Yipib3gyKioqKioq",
 					    "key_file": "/home/b/.ssh/id_box2"
 					}
 				}
@@ -51,25 +51,25 @@
 			"users" : [
 				{   "user": "root",
 					"sshkey" : {
-					    "passphrase": "root*box2***",
+					    "phrase64": "cm9vdCpib3gyKioq",
 					    "key_file": "/root/.ssh/id_2048"
 					}
 				},
 				{   "user": "c",
 					"sshkey": {
-					    "passphrase": "c*box3******",
+					    "phrase64": "Yypib3gzKioqKioq",
 					    "key_file": "/home/c/.ssh/id_2048"
 					}
 				},
 				{   "user": "d",
 					"sshkey": {
-					    "passphrase": "d*box3******",
+					    "phrase64": "ZCpib3gzKioqKioq",
 					    "key_file": "/home/d/.ssh/id_2048"
 					}
 				},
 				{   "user": "e",
 					"sshkey": {
-						"passphrase": "e*box3******",
+						"phrase64": "e*ZSpib3gzKioqKioq",
 					    "key_file": "/home/e/.ssh/id_2048"
 					}
 				}

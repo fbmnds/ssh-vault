@@ -38,7 +38,7 @@ import           GHC.Generics
 
 
 data SSHKey =
-  SSHKey { passphrase :: String
+  SSHKey { phrase64 :: String
          , key_file :: String
          } deriving (Show, Generic, Eq)
 instance JSON.FromJSON SSHKey

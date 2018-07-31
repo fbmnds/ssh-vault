@@ -21,7 +21,7 @@ import           SSHVault.SBytes
 import qualified Data.Text as T
 import qualified Data.ByteString as B
 --import qualified Data.ByteString.Lazy as BL
-import qualified Data.ByteArray as BA
+--import qualified Data.ByteArray as BA
 import qualified Data.ByteString.UTF8 as CU
 --import           Data.Binary (decode)
 

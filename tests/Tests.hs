@@ -122,7 +122,7 @@ test1 = do
 
   dcfg <- genTestConfig
   s' <- genSSHKey dcfg ("root", u')
-  let v1 = updateVault01 (SSHKey (toString . B64.encode . toBytes $ passphrase s') (key_file s'))
+  let v1 = updateVault01 (SSHKey (phrase64 s') (key_file s'))
   printf s "+++ OK, passed genSSHKey test.\n"
 
   encryptVault (toSBytes $ genAESKey vk) fn v1
