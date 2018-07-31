@@ -21,7 +21,7 @@ import SSHVault.Common
 
 import qualified Data.Text as T
 import qualified Data.ByteString as B
-import qualified Data.ByteString.Base64 as B64
+--import qualified Data.ByteString.Base64 as B64
 import Data.ByteArray (eq)
 
 import Data.Maybe (fromMaybe)
@@ -37,50 +37,20 @@ instance CoArbitrary B.ByteString where coarbitrary = coarbitrary . B.unpack
 
 
 
-done :: IO Tu.ExitCode
-done = Tu.shell "" ""
 
 
-updateVault01 :: SSHKey -> Vault
-updateVault01 s01' =
-  let
-    s01 = s01'
-    s02 = SSHKey "a*box1******" "/home/a/.ssh/id_box1"
-    u01 = User "root" s01
-    u02 = User "a" s02
-    ve0 = VaultEntry  "box1" "" "" "" 22 [u01,u02] in
-  Vault [ve0]
+-- | test0: check stabiltity of the vault record/JSON format
 
-prop_scrubbedbytes :: B.ByteString -> Property
-prop_scrubbedbytes t =
-  True
-    ==>  toSBytes t
-    `eq` toBytes (toSBytes t)
-    ==   toBytes t
-    `eq` toBytes (toSBytes t)
-    &&   toSBytes t'
-    `eq` toBytes (toSBytes t')
-    ==   toBytes t'
-    `eq` toBytes (toSBytes t')
-    &&   toSBytes t''
-    `eq` toSBytes (toLUBytes t'')
-    ==   toBytes t''
-    `eq` toBytes (toLUBytes t'')
-  where t'  = SSHVault.SBytes.toText t
-        t'' = toBytes t
-
-
-decodeVaultFromJSON :: () -> IO Vault
-decodeVaultFromJSON _ = do
+checkVaultJSON :: IO Vault
+checkVaultJSON = do
   vsc' <- B.readFile "./tests/data/vault0.json"
   let vsc = toSBytes vsc'
   let v =
         fromMaybe
-          (error "decodeVaultFromJSON: failed to parse Vault decode $ encode\n")
+          (error "checkVaultJSON: failed to parse Vault decode $ encode\n")
           . decode $ toLUBytes vsc
-  printf s "+++ OK, passed JSON decode test.\n"
+  printf s "+++ OK, passed vault JSON decode test.\n"
   return v
-
 
 getHosts :: Vault -> [String]
 getHosts = fmap host . vault
@@ -90,19 +60,9 @@ testGetHost v = case getHosts v of
   ["box1","box2","box3"] -> printf s "+++ OK, passed getHost test.\n"
   _                      -> error "--- ERR, failed getHost test.\n"
 
-genTestConfig :: IO Cfg.Config
-genTestConfig = do
-  vdir <- Tu.pwd
-  return Cfg.Config {
-        Cfg.dir = toString (format fp vdir) ++ "/tests/data"
-      , Cfg.file = toString (format fp vdir) ++ "/tests/data/.vault"
-      , Cfg.keystore = toString (format fp vdir) ++ "/tests/data/.vault/STORE"
-      }
-
-
 test0 :: IO ()
 test0 = do
-  v <- decodeVaultFromJSON ()
+  v <- checkVaultJSON
   testGetHost v
   -- vvf <- catch
   --     (decryptVault passwd "/home/fb/.ssh/ssh-vault-enc.json")
@@ -112,6 +72,27 @@ test0 = do
   -- printf s . toText $ encodePretty vvf
   return ()
 
+
+-- | test1 : roundtrip to/from disk for vault user update with new SSH key/passphrase
+
+updateVault01 :: SSHKey -> Vault
+updateVault01 s01' =
+  let
+    s01 = s01'
+    s02 = SSHKey "YSpib3gxKioqKioq" "/home/a/.ssh/id_box1"
+    u01 = User "root" s01
+    u02 = User "a" s02
+    ve0 = VaultEntry  "box1" "" "" "" 22 [u01,u02] in
+  Vault [ve0]
+
+genTestConfig :: IO Cfg.Config
+genTestConfig = do
+  vdir <- Tu.pwd
+  return Cfg.Config {
+        Cfg.dir = toString (format fp vdir) ++ "/tests/data"
+      , Cfg.file = toString (format fp vdir) ++ "/tests/data/.vault"
+      , Cfg.keystore = toString (format fp vdir) ++ "/tests/data/.vault/STORE"
+      }
 
 test1 :: IO ()
 test1 = do
@@ -132,6 +113,24 @@ test1 = do
     printf s "-- ERR, failed decryptVault test.\n"
 
 
+
+prop_scrubbedbytes :: B.ByteString -> Property
+prop_scrubbedbytes t =
+  True
+    ==>  toSBytes t
+    `eq` toBytes (toSBytes t)
+    ==   toBytes t
+    `eq` toBytes (toSBytes t)
+    &&   toSBytes t'
+    `eq` toBytes (toSBytes t')
+    ==   toBytes t'
+    `eq` toBytes (toSBytes t')
+    &&   toSBytes t''
+    `eq` toSBytes (toLUBytes t'')
+    ==   toBytes t''
+    `eq` toBytes (toLUBytes t'')
+  where t'  = SSHVault.SBytes.toText t
+        t'' = toBytes t
 
 
 main :: IO ()

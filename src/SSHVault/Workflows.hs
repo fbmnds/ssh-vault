@@ -55,9 +55,9 @@ genSSHFilename :: Cfg.Config -> QueueEntry -> IO String
 genSSHFilename cfg qe = do
     date <- Tu.date
     let ud = format (s%w) (toText . user $ snd qe) date
-    let kn = toText . genSHA256 $ format (s %s) (toText $ fst qe) ud
-    let fn = format (s % s % s) (toText $ Cfg.keystore cfg) "/id" kn
-    return $ toString fn
+    let kn = split4 . take2nd . genSHA256 $ format (s %s) (toText $ fst qe) ud
+    let fn = Cfg.keystore cfg ++ "/id_" ++ kn
+    return fn
 
 
 chmodSSHFile :: ToSBytes a => a -> IO ()

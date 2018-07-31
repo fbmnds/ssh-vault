@@ -12,6 +12,7 @@ module SSHVault.Common
   , randS
   , chmodFile
   , take2nd
+  , split4
   )
 
 where
@@ -42,9 +43,13 @@ take2nd :: [a] -> [a]
 take2nd (_ : _ : x' : y' : xs') = x' : y' : take2nd xs'
 take2nd _ = []
 
+split4 :: String -> String
+split4 (w' : x' : y' : z' : [])  = w': x' : y' : z' : []
+split4 (w' : x' : y' : z' : xs') = w': x' : y' : z': '-' : split4 xs'
+split4 _ = []
+
 rand1000 :: Int -> IO [Int]
 rand1000 n = take n . randomRs (0, 999) <$> newStdGen
-
 
 randS :: Int -> IO String
 randS n = take n . randomRs (' ','~') <$> newStdGen
