@@ -4,8 +4,6 @@
 --{-# LANGUAGE DeriveGeneric #-}
 module Main where
 
---import Control.Exception (SomeException, catch)
-
 import qualified SSHVault.Vault.Config as Cfg
 import SSHVault.Vault
     ( Vault (..)
@@ -64,11 +62,6 @@ test0 :: IO ()
 test0 = do
   v <- checkVaultJSON
   testGetHost v
-  -- vvf <- catch
-  --     (decryptVault passwd "/home/fb/.ssh/ssh-vault-enc.json")
-  --     (\(e' :: SomeException) -> do
-  --       printf w $ "failed JSON decoding throws " ++ show e'
-  --       return vvs)
   -- printf s . toText $ encodePretty vvf
   return ()
 

@@ -11,6 +11,7 @@ module SSHVault.Common
   , rand1000
   , randS
   , chmodFile
+  , chmodDirR
   , take2nd
   , split4
   )
@@ -44,7 +45,7 @@ take2nd (_ : _ : x' : y' : xs') = x' : y' : take2nd xs'
 take2nd _ = []
 
 split4 :: String -> String
-split4 (w' : x' : y' : z' : [])  = w': x' : y' : z' : []
+split4 [w', x', y', z']  = [w', x', y', z']
 split4 (w' : x' : y' : z' : xs') = w': x' : y' : z': '-' : split4 xs'
 split4 _ = []
 
@@ -102,3 +103,6 @@ shellD a b = do
 
 chmodFile :: (ToSBytes a, ToSBytes b) => a -> b -> IO ()
 chmodFile m fn = procD ("chmod" :: Tu.Text) [toText m, toText fn] Tu.empty
+
+chmodDirR :: (ToSBytes a, ToSBytes b) => a -> b -> IO ()
+chmodDirR m fn = procD ("chmod" :: Tu.Text) ["-R", toText m, toText fn] Tu.empty

@@ -27,9 +27,9 @@ instance JSON.ToJSON Config
 
 genDefaultConfig :: IO Config
 genDefaultConfig = do
-  vdir <- Tu.home
+  hdir <- Tu.home
   return Config {
-        dir = toString $ format fp vdir
-      , file = toString (format fp vdir) ++ "/.vault/vault"
-      , keystore = toString (format fp vdir) ++ "/.vault/STORE"
+        dir = toString (format fp hdir) ++ "/.vault"
+      , file = toString (format fp hdir) ++ "/.vault/vault"
+      , keystore = toString (format fp hdir) ++ "/.vault/STORE"
       }
