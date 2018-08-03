@@ -107,35 +107,38 @@ genSSHKey cfg qe = do
 
 
 initVault :: IO ()
-initVault = catch (
-    do
-        pw <- getKeyPhrase
+initVault = catch
+    (do
+        pw  <- getKeyPhrase
         cfg <- Cfg.genDefaultConfig
-        let d'  = toText $ dir cfg
+        let d' = toText $ dir cfg
             ks = toText $ keystore cfg
-            v = file cfg
+            v  = file cfg
         procD "mkdir" ["-p", d'] Tu.empty
         chmodDirR ("700" :: String) d'
         -- procD "chown" [" ", d] Tu.empty
         procD "mkdir" ["-p", ks] Tu.empty -- do not assume that ks is a subdirectory of d
         chmodDirR ("700" :: String) ks
         -- procD "chown" [" ", d] Tu.empty
-        encryptVault (toSBytes pw) v Vault { vault = [] }
-        )
-        (\(e' :: SomeException) -> do
-            printf w $ "could not initialize vault file: " ++ show e'
-            return ())
+        encryptVault (toSBytes pw) v Vault {vault = []}
+    )
+    (\(e' :: SomeException) -> do
+        printf w $ "could not initialize vault file: " ++ show e'
+        return ()
+    )
+
 
 printVault :: Cfg.Config -> IO ()
-printVault _ = catch (  -- TODO add options to choose config
-    do
-        pw <- getKeyPhrase
+printVault _ = catch
+    (  -- TODO add options to choose config
+     do
+        pw  <- getKeyPhrase
         cfg <- Cfg.genDefaultConfig
         let v = file cfg
         (v' :: Vault) <- decryptVault (toSBytes pw) v
         printf s . toText $ encodePretty v'
-        )
-        (\(e' :: SomeException) -> do
-            printf w $ "could not print vault: " ++ show e'
-            return ())
-
+    )
+    (\(e' :: SomeException) -> do
+        printf w $ "could not print vault: " ++ show e' ++ "\n"
+        return ()
+    )
