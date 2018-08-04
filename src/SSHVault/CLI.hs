@@ -17,6 +17,9 @@ import qualified Data.Aeson as JSON
 import qualified Data.ByteString.Base64 as B64
 
 
+import System.IO
+
+
 data Opts = Opts
     {   optVerbose :: !Bool
       , optCommand :: !Command
@@ -27,6 +30,7 @@ data Command
     | Init
     | Print
     | B64Encrypt
+    | SSHAdd String String
 
 cli :: IO ()
 cli = do
@@ -59,6 +63,13 @@ cli = do
                 Right x -> do
                     y <- decryptAES m x
                     print y
+        SSHAdd h u -> sshAdd h u
+  -- ssh-add " ++ key_file u ++ "; interact }'"]
+
+
+-- expect -c 'expect "\n" { eval spawn ssh -oStrictHostKeyChecking=no -oCheckHostIP=no usr@$myhost.example.com; interact }'
+
+
     -- putStrLn ("verbosity: " ++ show (optVerbose opts))
   where
     optsParser :: ParserInfo Opts
@@ -75,7 +86,7 @@ cli = do
     programOptions :: Parser Opts
     programOptions =
         Opts <$> switch (long "verbose" <> short 'v' <> help "Toggle verbosity") <*>
-        hsubparser (insertCommand <> initCommand <> printCommand <> b64encryptCommand)
+        hsubparser (insertCommand <> initCommand <> printCommand <> b64encryptCommand <> sshaddCommand)
 
     insertCommand :: Mod CommandFields Command
     insertCommand =
@@ -104,3 +115,14 @@ cli = do
         command
             "b64encrypt"
             (info (pure B64Encrypt) (progDesc "Encrypt and b64encode a phrase by password"))
+
+    sshaddCommand :: Mod CommandFields Command
+    sshaddCommand =
+        command
+            "ssh-add"
+            (info sshaddOptions (progDesc "Activate SSH key \"host:user\""))
+    sshaddOptions :: Parser Command
+    sshaddOptions =
+        SSHAdd <$>
+        strArgument (metavar "HOST" <> help "Target host for SSH Key") <*>
+        strArgument (metavar "USER" <> help "Target user for SSH Key")

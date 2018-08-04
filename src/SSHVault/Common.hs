@@ -49,11 +49,15 @@ split4 [w', x', y', z']  = [w', x', y', z']
 split4 (w' : x' : y' : z' : xs') = w': x' : y' : z': '-' : split4 xs'
 split4 _ = []
 
+
+stripChars :: String -> String -> String
+stripChars = filter . flip notElem
+
 rand1000 :: Int -> IO [Int]
 rand1000 n = take n . randomRs (0, 999) <$> newStdGen
 
 randS :: Int -> IO String
-randS n = take n . randomRs (' ','~') <$> newStdGen
+randS n = take n . stripChars "$\\\"'{}`" . randomRs (' ','~') <$> newStdGen
 
 
 encryptAES :: CU.ByteString -> CU.ByteString -> IO CU.ByteString
@@ -87,22 +91,22 @@ getKeyPhrase = do
   return . genAESKey $ toText keyPhrase
 
 
-procD :: ToSBytes a => a -> [a] -> Tu.Shell Tu.Line -> IO ()
-procD a b c = do
-    ec <- Tu.proc (toText a) (map toText b) c
+procD :: ToSBytes a => a -> [a] -> IO ()
+procD a b = do
+    ec <- Tu.proc (toText a) (map toText b) Tu.empty
     case ec of
         Tu.ExitFailure _ -> Tu.die $ Tu.format (s % s % w %s) "failed to execute: " (toText a) (map toText b) "\n"
         _ -> return ()
 
-shellD :: ToSBytes a => a -> Tu.Shell Tu.Line -> IO ()
-shellD a b = do
-    ec <- Tu.shell (toText a) b
+shellD :: ToSBytes a => a -> IO ()
+shellD a = do
+    ec <- Tu.shell (toText a) Tu.empty
     case ec of
         Tu.ExitFailure _ -> Tu.die $ Tu.format (s % s %s) "failed to execute: " (toText a) "\n"
         _ -> return ()
 
 chmodFile :: (ToSBytes a, ToSBytes b) => a -> b -> IO ()
-chmodFile m fn = procD ("chmod" :: Tu.Text) [toText m, toText fn] Tu.empty
+chmodFile m fn = procD ("chmod" :: Tu.Text) [toText m, toText fn]
 
 chmodDirR :: (ToSBytes a, ToSBytes b) => a -> b -> IO ()
-chmodDirR m fn = procD ("chmod" :: Tu.Text) ["-R", toText m, toText fn] Tu.empty
+chmodDirR m fn = procD ("chmod" :: Tu.Text) ["-R", toText m, toText fn]

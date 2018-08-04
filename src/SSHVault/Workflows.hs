@@ -9,6 +9,7 @@ module SSHVault.Workflows
     , genSSHFilename
     , chmodSSHFile
     , genSSHKey
+    , sshAdd
     )
     where
 
@@ -23,6 +24,7 @@ import qualified Network.SSH.Client.SimpleSSH as SSH
 
 --import Data.Maybe (fromMaybe)
 import Data.Text (split)
+import Data.List (intercalate)
 import qualified Data.ByteString.Base64 as B64
 import Data.Aeson.Encode.Pretty
 --import qualified Data.ByteArray as BA
@@ -101,7 +103,6 @@ genSSHKey cfg h u' = do
         , "-f", fn
         , "-P", pw
         ]
-        Tu.empty
     printf "[+] new SSH secrets generated\n"
     chmodSSHFile fn
     printf "[+] chmod 600 on new SSH file\n"
@@ -116,10 +117,10 @@ initVault = catch
         let d' = toText $ dir cfg
             ks = toText $ keystore cfg
             v  = file cfg
-        procD "mkdir" ["-p", d'] Tu.empty
+        procD "mkdir" ["-p", d']
         chmodDirR ("700" :: String) d'
         -- procD "chown" [" ", d] Tu.empty
-        procD "mkdir" ["-p", ks] Tu.empty -- do not assume that ks is a subdirectory of d
+        procD "mkdir" ["-p", ks] -- do not assume that ks is a subdirectory of d
         chmodDirR ("700" :: String) ks
         -- procD "chown" [" ", d] Tu.empty
         encryptVault (toSBytes pw) v Vault {vault = []}
@@ -142,5 +143,48 @@ printVault _ = catch
     )
     (\(e' :: SomeException) -> do
         printf w $ "could not print vault: " ++ show e' ++ "\n"
+        return ()
+    )
+
+
+sshAdd :: String -> String -> IO ()
+sshAdd h u = catch (
+    do
+        cfg          <- genDefaultConfig
+        m            <- getKeyPhrase
+        (v :: Vault) <- decryptVault m (file cfg)
+        case filter (\ve -> h == host ve) $ vault v of
+            []   -> error "host not found"
+            [ve] -> case filter (\u' -> u == user u') (users ve) of
+                []   -> error "user not found"
+                [u'] -> do
+                    let (ph', fn, exp') =
+                            ( B64.decode . toBytes . phrase64 $ sshkey u'
+                            , key_file $ sshkey u'
+                            , dir cfg ++ "/ssh-add.exp"
+                            )
+                    ph <- case ph' of
+                        Left _ ->
+                            error
+                                "could not decode SSH key passphrase, probably wrong master password"
+                        Right x -> decryptAES m x
+                    _ <- procD "touch" [exp']
+                    _ <- chmodFile ("600" :: String) exp'
+                    let ls =
+                            [ "spawn ssh-add -t 60 " ++ fn
+                            , "expect \"Enter passphrase\""
+                            , "send \"" ++ toString ph ++ "\\r\""
+                            , "expect eof"
+                            ]
+                    _ <- writeFile exp' (intercalate "\n" ls)
+                    _ <- procD "expect" ["-f", exp']
+                    _ <- procD "rm" [exp']
+                    return ()
+                _ -> error "vault entry for user inconsitent"
+            _ -> error "vault entry for host inconsitent"
+        return ()
+    )
+    (\(e' :: SomeException) -> do
+        printf w $ "failed to ssh-add key for " ++ h ++ ":" ++ u ++ "\n"
         return ()
     )
