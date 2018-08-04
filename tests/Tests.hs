@@ -96,7 +96,11 @@ test1 = do
       u' = User "root" $ SSHKey "root*box1***" "/root/.ssh/id_box1"
 
   dcfg <- genTestConfig
-  s' <- genSSHKey dcfg (UserUpdate ("root", [u']))
+  s' <- do
+    k <- genSSHKey dcfg (UserUpdate ("root", u'))
+    case k of
+      Just key -> return key
+      _ -> error "+++ OK, passed genSSHKey test.\n"
   let v1 = updateVault01 (SSHKey (phrase64 s') (key_file s'))
   printf s "+++ OK, passed genSSHKey test.\n"
 

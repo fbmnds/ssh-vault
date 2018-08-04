@@ -10,12 +10,11 @@ module SSHVault.Vault.Queue
 import SSHVault.Vault
 
 
-data QueueEntry = UserUpdate (Host, [User]) | HostUpdate VaultEntry
+data QueueEntry = UserUpdate (Host, User) | HostUpdate VaultEntry
 type Queue = [QueueEntry]
 
 
 
 genQueue :: [VaultEntry] -> [QueueEntry]
-genQueue = map (\ ve -> UserUpdate (host ve, users ve))
-
-
+genQueue = concatMap
+  (\ve -> (\(h, us) -> map (\u' -> UserUpdate (h, u')) us) (host ve, users ve))

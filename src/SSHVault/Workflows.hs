@@ -59,9 +59,9 @@ uploadSSHKey qe nkey =
 
 genSSHFilename :: Cfg.Config -> QueueEntry -> IO String
 genSSHFilename cfg qe = case qe of
-    UserUpdate (h,us) -> do
+    UserUpdate (h,u') -> do
         date <- Tu.date
-        let ud = format (s%w) (toText . user $ head us) date
+        let ud = format (s%w) (toText . user $ u') date
         let kn = split4 . take2nd . genSHA256 $ format (s %s) (toText h) ud
         let fn = Cfg.keystore cfg ++ "/id_" ++ kn
         return fn
@@ -86,9 +86,9 @@ procQueueEntry cfg q    -- q :: QueueEntry = "VaultEntry reduced to single user"
 
 -}
 
-genSSHKey :: Cfg.Config -> QueueEntry -> IO SSHKey
+genSSHKey :: Cfg.Config -> QueueEntry -> IO (Maybe SSHKey)
 genSSHKey cfg qe = case qe of
-    UserUpdate (_,us) -> do
+    UserUpdate (_,u') -> do
         printf "[*] generate new SSH key password\n"
         pw' <- randS 20
         let pw = toString . B64.encode $ toBytes pw'
@@ -97,7 +97,7 @@ genSSHKey cfg qe = case qe of
         printf "[*] ssh-keygen new SSH key file\n"
         procD
             "ssh-keygen"
-            [ "-n", user $ head us
+            [ "-n", user u'
             , "-t", "rsa"
             , "-b", "4096"
             , "-f", fn
@@ -107,8 +107,8 @@ genSSHKey cfg qe = case qe of
         printf "[+] new SSH secrets generated\n"
         chmodSSHFile fn
         printf "[+] chmod 600 on new SSH file\n"
-        return SSHKey { phrase64 = pw, key_file = fn }
-    _ -> return SSHKey { phrase64 = "", key_file = "" }
+        return $ Just SSHKey { phrase64 = pw, key_file = fn }
+    _ -> return Nothing
 
 
 initVault :: IO ()
