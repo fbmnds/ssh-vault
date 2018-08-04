@@ -7,21 +7,23 @@ import Data.Semigroup ((<>))
 import Options.Applicative
 
 import SSHVault.Common
+import SSHVault.Vault
 import SSHVault.Vault.Config
 import SSHVault.Workflows
 import SSHVault.SBytes
 
+import           Data.Maybe (fromMaybe)
+import qualified Data.Aeson as JSON
 import qualified Data.ByteString.Base64 as B64
-import System.IO
+
 
 data Opts = Opts
-    { optVerbose :: !Bool
-    , optCommand :: !Command
+    {   optVerbose :: !Bool
+      , optCommand :: !Command
     }
 
 data Command
-    = Create String
-    | Delete
+    = Insert String
     | Init
     | Print
     | B64Encrypt
@@ -30,8 +32,14 @@ cli :: IO ()
 cli = do
     (opts :: Opts) <- execParser optsParser
     case optCommand opts of
-        Create name -> putStrLn ("Created the thing named " ++ name)
-        Delete -> putStrLn "Deleted the thing!"
+        Insert s' -> do
+            (ve :: VaultEntry) <- return . fromMaybe (error "failed to JSON.decode the given input") . JSON.decode $ toLUBytes s'
+            cfg <- genDefaultConfig
+            m <- getKeyPhrase
+            (v :: Vault) <- decryptVault m (file cfg)
+            case filter (\ h ->  h == host ve) $ fmap host (vault v) of
+                [] -> encryptVault (toSBytes m) (file cfg) (Vault (vault v ++ [ve]))
+                _ -> error $ "failed to insert host " ++ host ve ++ ": already in vault"
         Init -> initVault
         Print -> do
             cfg <- genDefaultConfig
@@ -46,21 +54,20 @@ cli = do
             aesk <- encryptAES m $ toBytes k
             let b64aesk = B64.encode aesk
             print b64aesk
-            daesk <- case B64.decode b64aesk of
+            case B64.decode b64aesk of
                 Left e -> print e
                 Right x -> do
                     y <- decryptAES m x
                     print y
-            return ()
     -- putStrLn ("verbosity: " ++ show (optVerbose opts))
   where
     optsParser :: ParserInfo Opts
     optsParser =
         info
             (helper <*> versionOption <*> programOptions)
-            (fullDesc <> progDesc "optparse subcommands example" <>
+            (fullDesc <> progDesc "SSH key management automation" <>
              header
-                 "optparse-sub-example - a small example program for optparse-applicative with subcommands")
+                 "ssh-vault - SSH key management command line interface")
 
     versionOption :: Parser (a -> a)
     versionOption = infoOption "0.0.1" (long "version" <> help "Show version")
@@ -68,23 +75,17 @@ cli = do
     programOptions :: Parser Opts
     programOptions =
         Opts <$> switch (long "verbose" <> short 'v' <> help "Toggle verbosity") <*>
-        hsubparser (createCommand <> deleteCommand <> initCommand <> printCommand <> b64encryptCommand)
+        hsubparser (insertCommand <> initCommand <> printCommand <> b64encryptCommand)
 
-    createCommand :: Mod CommandFields Command
-    createCommand =
+    insertCommand :: Mod CommandFields Command
+    insertCommand =
         command
-            "create"
-            (info createOptions (progDesc "Create a thing"))
-    createOptions :: Parser Command
-    createOptions =
-        Create <$>
-        strArgument (metavar "NAME" <> help "Name of the thing to create")
-
-    deleteCommand :: Mod CommandFields Command
-    deleteCommand =
-        command
-            "delete"
-            (info (pure Delete) (progDesc "Delete the thing"))
+            "insert"
+            (info insertOptions (progDesc "Insert a vault entry"))
+    insertOptions :: Parser Command
+    insertOptions =
+        Insert <$>
+        strArgument (metavar "VAULTENTRY" <> help "JSON formatted vault entry to insert")
 
     initCommand :: Mod CommandFields Command
     initCommand =
