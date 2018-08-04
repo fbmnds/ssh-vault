@@ -1,9 +1,14 @@
 module Main where
 
 import SSHVault.CLI
+import SSHVault.Common
+import SSHVault.SBytes
+
+
 
 main :: IO ()
 main = cli
+
 
 {-
 -- haskelline

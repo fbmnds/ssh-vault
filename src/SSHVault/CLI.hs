@@ -6,8 +6,13 @@ module SSHVault.CLI (cli)
 import Data.Semigroup ((<>))
 import Options.Applicative
 
+import SSHVault.Common
 import SSHVault.Vault.Config
 import SSHVault.Workflows
+import SSHVault.SBytes
+
+import qualified Data.ByteString.Base64 as B64
+import System.IO
 
 data Opts = Opts
     { optVerbose :: !Bool
@@ -18,7 +23,8 @@ data Command
     = Create String
     | Delete
     | Init
-    | Print String
+    | Print
+    | B64Encrypt
 
 cli :: IO ()
 cli = do
@@ -27,10 +33,26 @@ cli = do
         Create name -> putStrLn ("Created the thing named " ++ name)
         Delete -> putStrLn "Deleted the thing!"
         Init -> initVault
-        Print _ -> do
+        Print -> do
             cfg <- genDefaultConfig
             printVault cfg
-    putStrLn ("verbosity: " ++ show (optVerbose opts))
+        B64Encrypt ->  do
+            putStrLn "1. Masterpassword"
+            m <- getKeyPhrase
+            print m
+            putStrLn "2. SSH key"
+            k <- getLine
+            print k
+            aesk <- encryptAES m $ toBytes k
+            let b64aesk = B64.encode aesk
+            print b64aesk
+            daesk <- case B64.decode b64aesk of
+                Left e -> print e
+                Right x -> do
+                    y <- decryptAES m x
+                    print y
+            return ()
+    -- putStrLn ("verbosity: " ++ show (optVerbose opts))
   where
     optsParser :: ParserInfo Opts
     optsParser =
@@ -46,7 +68,7 @@ cli = do
     programOptions :: Parser Opts
     programOptions =
         Opts <$> switch (long "verbose" <> short 'v' <> help "Toggle verbosity") <*>
-        hsubparser (createCommand <> deleteCommand <> initCommand <> printCommand)
+        hsubparser (createCommand <> deleteCommand <> initCommand <> printCommand <> b64encryptCommand)
 
     createCommand :: Mod CommandFields Command
     createCommand =
@@ -74,8 +96,10 @@ cli = do
     printCommand =
         command
             "print"
-            (info printOptions (progDesc "Print the vault"))
-    printOptions :: Parser Command
-    printOptions =
-        Print <$>
-        strArgument (metavar "CONFIG" <> help "Vault configuration to use for printing")
+            (info (pure Print) (progDesc "Print the vault"))
+
+    b64encryptCommand :: Mod CommandFields Command
+    b64encryptCommand =
+        command
+            "b64encrypt"
+            (info (pure B64Encrypt) (progDesc "Encrypt and b64encode a phrase by password"))

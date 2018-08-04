@@ -14,7 +14,7 @@ module SSHVault.Workflows
 
 import SSHVault.Vault
 import SSHVault.Vault.Config as Cfg
-import SSHVault.Vault.Queue
+--import SSHVault.Vault.Queue
 import SSHVault.SBytes
 import SSHVault.Common
 
@@ -138,7 +138,7 @@ printVault _ = catch
         cfg <- Cfg.genDefaultConfig
         let v = file cfg
         (v' :: Vault) <- decryptVault (toSBytes pw) v
-        printf s . toText $ encodePretty v'
+        printf (s%"\n") . toText $ encodePretty v'
     )
     (\(e' :: SomeException) -> do
         printf w $ "could not print vault: " ++ show e' ++ "\n"
