@@ -14,6 +14,8 @@ module SSHVault.Common
   , chmodDirR
   , take2nd
   , split4
+  , substring
+  , prefix
   )
 
 where
@@ -48,6 +50,18 @@ split4 :: String -> String
 split4 [w', x', y', z']  = [w', x', y', z']
 split4 (w' : x' : y' : z' : xs') = w': x' : y' : z': '-' : split4 xs'
 split4 _ = []
+
+substring :: String -> String -> Bool
+substring (x:xs) [] = False
+substring xs ys
+    | prefix xs ys = True
+    | substring xs (tail ys) = True
+    | otherwise = False
+
+prefix :: String -> String -> Bool
+prefix [] ys = True
+prefix (x:xs) [] = False
+prefix (x:xs) (y:ys) = (x == y) && prefix xs ys
 
 
 stripChars :: String -> String -> String

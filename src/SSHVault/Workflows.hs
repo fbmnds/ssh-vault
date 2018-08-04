@@ -19,6 +19,7 @@ import SSHVault.Vault.Config as Cfg
 import SSHVault.SBytes
 import SSHVault.Common
 
+import Control.Monad.Except
 import Control.Exception (SomeException, catch)
 import qualified Network.SSH.Client.SimpleSSH as SSH
 
@@ -36,20 +37,19 @@ import           Turtle.Format
 
 
 
---uploadSSHKey :: QueueEntry -> SSHKey -> IO SSH.Session
-uploadSSHKey qe nkey =
-    SSH.openSession (fst qe) 22 "~/.ssh/known_hosts"
-    >>= \ ss -> SSH.authenticateWithKey ss u' pub priv ph
-    >>= \ ss' ->
-        let _ = SSH.sendFile ss' 0o600 pub' "~/.ssh" in
-        (\ ss'' ->
-            let _ = SSH.execCommand ss'' $ "cat ~/.ssh/" ++ pub'' ++ " >> ~/.ssh/authorized_keys"
-                _ = SSH.execCommand ss'' $ "rm ~/.ssh/" ++ pub''
-        in return ())
-        ss
-      where
-        u' = user $ snd qe
-        s' = sshkey $ snd qe
+uploadSSHKey :: ToSBytes a => a -> Host -> User -> SSHKey -> ExceptT SSH.SimpleSSHError IO ()
+uploadSSHKey _ h u' nkey =
+    SSH.openSession h 22 "~/.ssh/known_hosts"
+    >>= \ ss -> SSH.authenticateWithKey ss u'' pub priv ph
+    >>= \ ss' -> do
+        let _ = SSH.sendFile ss' 0o600 pub' "~/.ssh"
+            _ = SSH.execCommand ss' $ "cat ~/.ssh/" ++ pub'' ++ " >> ~/.ssh/authorized_keys"
+            _ = SSH.execCommand ss' $ "rm ~/.ssh/" ++ pub''
+        SSH.closeSession ss'
+        --return ()
+    where
+        u'' = user u'
+        s' = sshkey u'
         ph = case B64.decode . toBytes $ phrase64 s' of
             Left _ -> error "uploadSSHKey failed to B64.decode key passphrase"
             Right s0 -> toString s0
@@ -87,11 +87,12 @@ procQueueEntry cfg q    -- q :: QueueEntry = "VaultEntry reduced to single user"
 
 -}
 
-genSSHKey :: Cfg.Config -> Host -> User -> IO SSHKey
-genSSHKey cfg h u' = do
+genSSHKey :: ToSBytes a => Cfg.Config -> a -> Host -> User -> IO SSHKey
+genSSHKey cfg m h u' = do
     printf "[*] generate new SSH key password\n"
     pw' <- randS 20
-    let pw = toString . B64.encode $ toBytes pw'
+    pw'' <- if (toBytes m) == "" then return $ toBytes pw' else encryptAES (toBytes m) $ toBytes pw'
+    let pw = toString $ B64.encode pw''
     printf "[*] generate new SSH key file name\n"
     fn <- genSSHFilename cfg h u'
     printf "[*] ssh-keygen new SSH key file\n"
@@ -101,7 +102,7 @@ genSSHKey cfg h u' = do
         , "-t", "rsa"
         , "-b", "4096"
         , "-f", fn
-        , "-P", pw
+        , "-P", pw'
         ]
     printf "[+] new SSH secrets generated\n"
     chmodSSHFile fn
@@ -148,26 +149,24 @@ printVault _ = catch
 
 
 sshAdd :: String -> String -> IO ()
-sshAdd h u = catch (
+sshAdd h u' = catch (
     do
         cfg          <- genDefaultConfig
         m            <- getKeyPhrase
         (v :: Vault) <- decryptVault m (file cfg)
         case filter (\ve -> h == host ve) $ vault v of
             []   -> error "host not found"
-            [ve] -> case filter (\u' -> u == user u') (users ve) of
+            [ve] -> case filter (\u'' -> u' == user u'') (users ve) of
                 []   -> error "user not found"
-                [u'] -> do
+                [u''] -> do
                     let (ph', fn, exp') =
-                            ( B64.decode . toBytes . phrase64 $ sshkey u'
-                            , key_file $ sshkey u'
+                            ( B64.decode . toBytes . phrase64 $ sshkey u''
+                            , key_file $ sshkey u''
                             , dir cfg ++ "/ssh-add.exp"
                             )
                     ph <- case ph' of
-                        Left _ ->
-                            error
-                                "could not decode SSH key passphrase, probably wrong master password"
-                        Right x -> decryptAES m x
+                        Left _ -> error "could not decode SSH key passphrase, probably wrong master password"
+                        Right x' -> decryptAES m x'
                     _ <- procD "touch" [exp']
                     _ <- chmodFile ("600" :: String) exp'
                     let ls =
@@ -180,11 +179,22 @@ sshAdd h u = catch (
                     _ <- procD "expect" ["-f", exp']
                     _ <- procD "rm" [exp']
                     return ()
-                _ -> error "vault entry for user inconsitent"
-            _ -> error "vault entry for host inconsitent"
+                _ -> error "vault entry for user inconsistent"
+            _ -> error "vault entry for host inconsistent"
         return ()
     )
-    (\(e' :: SomeException) -> do
-        printf w $ "failed to ssh-add key for " ++ h ++ ":" ++ u ++ "\n"
-        return ()
+    (\(_ :: SomeException) -> --do
+        printf (s%"\n") . toText $ "failed to ssh-add key for " ++ u' ++ "@" ++ h
+{-
+        _ <- return $ map
+            (\ s' -> when (substring s' (show e')) (printf (s % "\n") (toText s') :: IO ()))
+            [ "host not found"
+            , "user not found"
+            , "could not decode SSH key passphrase, probably wrong master password"
+            , "vault entry for user inconsistent"
+            , "vault entry for host inconsistent"
+            ]
+        --return ()
+        printf (s%"\n") (toText $ show e')
+-}
     )
