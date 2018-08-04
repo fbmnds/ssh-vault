@@ -14,6 +14,7 @@ module SSHVault.Workflows
 
 import SSHVault.Vault
 import SSHVault.Vault.Config as Cfg
+import SSHVault.Vault.Queue
 import SSHVault.SBytes
 import SSHVault.Common
 
@@ -57,12 +58,14 @@ uploadSSHKey qe nkey =
 
 
 genSSHFilename :: Cfg.Config -> QueueEntry -> IO String
-genSSHFilename cfg qe = do
-    date <- Tu.date
-    let ud = format (s%w) (toText . user $ snd qe) date
-    let kn = split4 . take2nd . genSHA256 $ format (s %s) (toText $ fst qe) ud
-    let fn = Cfg.keystore cfg ++ "/id_" ++ kn
-    return fn
+genSSHFilename cfg qe = case qe of
+    UserUpdate (h,us) -> do
+        date <- Tu.date
+        let ud = format (s%w) (toText . user $ head us) date
+        let kn = split4 . take2nd . genSHA256 $ format (s %s) (toText h) ud
+        let fn = Cfg.keystore cfg ++ "/id_" ++ kn
+        return fn
+    _ -> return ""
 
 
 chmodSSHFile :: ToSBytes a => a -> IO ()
@@ -84,26 +87,28 @@ procQueueEntry cfg q    -- q :: QueueEntry = "VaultEntry reduced to single user"
 -}
 
 genSSHKey :: Cfg.Config -> QueueEntry -> IO SSHKey
-genSSHKey cfg qe = do
-    printf "[*] generate new SSH key password\n"
-    pw' <- randS 20
-    let pw = toString . B64.encode $ toBytes pw'
-    printf "[*] generate new SSH key file name\n"
-    fn <- genSSHFilename cfg qe
-    printf "[*] ssh-keygen new SSH key file\n"
-    procD
-        "ssh-keygen"
-        [ "-n", user $ snd qe
-        , "-t", "rsa"
-        , "-b", "4096"
-        , "-f", fn
-        , "-P", pw
-        ]
-        Tu.empty
-    printf "[+] new SSH secrets generated\n"
-    chmodSSHFile fn
-    printf "[+] chmod 600 on new SSH file\n"
-    return SSHKey { phrase64 = pw, key_file = fn }
+genSSHKey cfg qe = case qe of
+    UserUpdate (_,us) -> do
+        printf "[*] generate new SSH key password\n"
+        pw' <- randS 20
+        let pw = toString . B64.encode $ toBytes pw'
+        printf "[*] generate new SSH key file name\n"
+        fn <- genSSHFilename cfg qe
+        printf "[*] ssh-keygen new SSH key file\n"
+        procD
+            "ssh-keygen"
+            [ "-n", user $ head us
+            , "-t", "rsa"
+            , "-b", "4096"
+            , "-f", fn
+            , "-P", pw
+            ]
+            Tu.empty
+        printf "[+] new SSH secrets generated\n"
+        chmodSSHFile fn
+        printf "[+] chmod 600 on new SSH file\n"
+        return SSHKey { phrase64 = pw, key_file = fn }
+    _ -> return SSHKey { phrase64 = "", key_file = "" }
 
 
 initVault :: IO ()

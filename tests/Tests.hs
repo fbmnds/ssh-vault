@@ -13,6 +13,7 @@ import SSHVault.Vault
     , encryptVault
     , decryptVault
     )
+import SSHVault.Vault.Queue
 import SSHVault.Workflows
 import SSHVault.SBytes
 import SSHVault.Common
@@ -95,7 +96,7 @@ test1 = do
       u' = User "root" $ SSHKey "root*box1***" "/root/.ssh/id_box1"
 
   dcfg <- genTestConfig
-  s' <- genSSHKey dcfg ("root", u')
+  s' <- genSSHKey dcfg (UserUpdate ("root", [u']))
   let v1 = updateVault01 (SSHKey (phrase64 s') (key_file s'))
   printf s "+++ OK, passed genSSHKey test.\n"
 

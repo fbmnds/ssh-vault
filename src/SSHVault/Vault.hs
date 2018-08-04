@@ -1,22 +1,20 @@
 
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE DeriveGeneric #-}
+
 module SSHVault.Vault
     ( Vault (..)
     , VaultEntry (..)
     , User (..)
+    , Host
     , SSHKey (..)
-    , Queue
-    , QueueEntry
 --    , putVaultFile
     , encryptVault
     , decryptVault
     , updateUsers
     , updateVaultEntry
     , updateVault
-    , genQueue
     )
 where
 
@@ -72,18 +70,6 @@ newtype Vault =
 instance JSON.FromJSON Vault
 instance JSON.ToJSON Vault
 
-
-type QueueEntry = (Host, User)
-type Queue = [QueueEntry]
-
-
-
-genQueue :: [VaultEntry] -> Queue
-genQueue ves =
-  let f' ve = (host ve, users ve) in
-  let s1 = fmap f' ves in
-  let s2 (h_us :: (Host, [User])) = fmap (fst h_us,) (snd h_us) in
-  concatMap s2 s1
 
 
 updateUsers :: User -> [User] -> [User]

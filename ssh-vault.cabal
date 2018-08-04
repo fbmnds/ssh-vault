@@ -17,6 +17,7 @@ library
         SSHVault.Common
         SSHVault.Vault
         SSHVault.Vault.Config
+        SSHVault.Vault.Queue
         SSHVault.Workflows
         SSHVault.SBytes
         SSHVault.CLI
@@ -52,6 +53,7 @@ executable ssh-vault
         SSHVault.Common
         SSHVault.Vault
         SSHVault.Vault.Config
+        SSHVault.Vault.Queue
         SSHVault.Workflows
         SSHVault.SBytes
         SSHVault.CLI
@@ -88,6 +90,7 @@ test-suite ssh-vault-tests
         SSHVault.Common
         SSHVault.Vault
         SSHVault.Vault.Config
+        SSHVault.Vault.Queue
         SSHVault.Workflows
         SSHVault.SBytes
         SSHVault.CLI
