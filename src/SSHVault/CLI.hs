@@ -53,13 +53,13 @@ cli = do
             cfg <- Cfg.genDefaultConfig
             m   <- getKeyPhrase
             (v :: Vault) <- decryptVault (toSBytes m) (Cfg.file cfg)
-            user <- case getUser v h u' of
+            user' <- case getUser v h u' of
                 [u''] -> return u''
                 _     -> error "vault inconsistent"
-            newkey <- genSSHKey cfg m h user
+            newkey <- genSSHKey cfg m h user'
             print $ JSON.toJSON newkey
             print "\n"
-            uploadSSHKey cfg m h user newkey
+            uploadSSHKey cfg m h user' newkey
   where
     optsParser :: ParserInfo Opts
     optsParser =

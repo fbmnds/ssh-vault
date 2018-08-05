@@ -10,13 +10,15 @@
 				{   "user": "root",
 					"sshkey": {
 					    "phrase64": "cm9vdCpib3gxKioq",
-					    "key_file": "/root/.ssh/id_box1"
+					    "key_file": "/root/.ssh/id_box1",
+					    "key_content": "##################"
 					}
 				},
 				{   "user": "a",
 				    "sshkey": {
 					    "phrase64": "YSpib3gxKioqKioq",
-					    "key_file": "/home/a/.ssh/id_box1"
+					    "key_file": "/home/a/.ssh/id_box1",
+					    "key_content": "##################"
 					}
 				}
 			]
@@ -31,13 +33,15 @@
 				{   "user": "root",
 					"sshkey" : {
 					    "phrase64": "cm9vdCpib3gyKioq",
-					    "key_file": "/root/.ssh/id_box2"
+					    "key_file": "/root/.ssh/id_box2",
+					    "key_content": "##################"
 					}
 				},
 				{   "user": "b",
 					"sshkey" : {
 					    "phrase64": "Yipib3gyKioqKioq",
-					    "key_file": "/home/b/.ssh/id_box2"
+					    "key_file": "/home/b/.ssh/id_box2",
+					    "key_content": "##################"
 					}
 				}
 			]
@@ -52,25 +56,29 @@
 				{   "user": "root",
 					"sshkey" : {
 					    "phrase64": "cm9vdCpib3gyKioq",
-					    "key_file": "/root/.ssh/id_2048"
+					    "key_file": "/root/.ssh/id_2048",
+					    "key_content": "##################"
 					}
 				},
 				{   "user": "c",
 					"sshkey": {
 					    "phrase64": "Yypib3gzKioqKioq",
-					    "key_file": "/home/c/.ssh/id_2048"
+					    "key_file": "/home/c/.ssh/id_2048",
+					    "key_content": "##################"
 					}
 				},
 				{   "user": "d",
 					"sshkey": {
 					    "phrase64": "ZCpib3gzKioqKioq",
-					    "key_file": "/home/d/.ssh/id_2048"
+					    "key_file": "/home/d/.ssh/id_2048",
+					    "key_content": "##################"
 					}
 				},
 				{   "user": "e",
 					"sshkey": {
 						"phrase64": "e*ZSpib3gzKioqKioq",
-					    "key_file": "/home/e/.ssh/id_2048"
+					    "key_file": "/home/e/.ssh/id_2048",
+					    "key_content": "##################"
 					}
 				}
 			]

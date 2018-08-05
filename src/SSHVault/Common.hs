@@ -12,6 +12,7 @@ module SSHVault.Common
   , rand1000
   , randS
   , chmodFile
+  , chmodDir
   , chmodDirR
   , take2nd
   , split4
@@ -129,6 +130,9 @@ shellD a = do
 
 chmodFile :: (ToSBytes a, ToSBytes b) => a -> b -> IO ()
 chmodFile m fn = procD ("chmod" :: Tu.Text) [toText m, toText fn]
+
+chmodDir :: (ToSBytes a, ToSBytes b) => a -> b -> IO ()
+chmodDir m fn = procD ("chmod" :: Tu.Text) [toText m, toText fn]
 
 chmodDirR :: (ToSBytes a, ToSBytes b) => a -> b -> IO ()
 chmodDirR m fn = procD ("chmod" :: Tu.Text) ["-R", toText m, toText fn]

@@ -73,7 +73,7 @@ updateVault01 :: SSHKey -> Vault
 updateVault01 s01' =
   let
     s01 = s01'
-    s02 = SSHKey "YSpib3gxKioqKioq" "/home/a/.ssh/id_box1"
+    s02 = SSHKey "YSpib3gxKioqKioq" "/home/a/.ssh/id_box1" "##################"
     u01 = User "root" s01
     u02 = User "a" s02
     ve0 = VaultEntry  "box1" "" "" "" 22 [u01,u02] in
@@ -93,11 +93,11 @@ test1 = do
   h <- Tu.home
   let fn = toString (format fp h) ++ "/.ssh/vault" ++ ".NEW"
       vk = "0123456789" :: T.Text
-      u' = User "root" $ SSHKey "root*box1***" "/root/.ssh/id_box1"
+      u' = User "root" $ SSHKey "root*box1***" "/root/.ssh/id_box1" "##################"
 
   dcfg <- genTestConfig
   s' <- genSSHKey dcfg (toSBytes (""::String)) "root" u'
-  let v1 = updateVault01 (SSHKey (phrase64 s') (key_file s'))
+  let v1 = updateVault01 (SSHKey (phrase64 s') (key_file s') "##################")
   printf s "+++ OK, passed genSSHKey test.\n"
 
   encryptVault (toSBytes $ genAESKey vk) fn v1

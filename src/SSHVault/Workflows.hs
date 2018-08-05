@@ -37,7 +37,8 @@ import qualified Data.ByteArray as BA
 import System.IO
 
 import qualified Turtle as Tu
-import           Turtle.Format
+import Turtle.Prelude (testfile)
+import Turtle.Format
 
 
 
@@ -110,27 +111,30 @@ genSSHKey cfg m h u' = do
     printf "[+] new SSH secrets generated\n"
     chmodSSHFile fn
     printf "[+] chmod 600 on new SSH file\n"
-    return SSHKey { phrase64 = pw, key_file = fn }
+    c' <- readFile fn
+    return SSHKey { phrase64 = pw, key_file = fn, key_content = c' }
 
 
 initVault :: Cfg.Config -> IO ()
 initVault cfg = catch (
     do
-        pw  <- getKeyPhrase
-        let d' = toText $ dir cfg
-            ks = toText $ keystore cfg
-            v  = file cfg
-        procD "mkdir" ["-p", d']
-        chmodDirR ("700" :: String) d'
-        -- procD "chown" [" ", d]
-        procD "mkdir" ["-p", ks] -- do not assume that ks is a subdirectory of d
-        chmodDirR ("700" :: String) ks
-        -- procD "chown" [" ", d]
-        encryptVault (toSBytes pw) v Vault {vault = []}
+        let v  = file cfg
+        b' <- testfile (Tu.fromString v)
+        if b' then print ("vault file exists. " ++ v)
+        else do
+            pw  <- getKeyPhrase
+            let d' = toText $ dir cfg
+                ks = toText $ keystore cfg
+            procD "mkdir" ["-p", d']
+            chmodDir ("700" :: String) d'
+            -- procD "chown" [" ", d]
+            procD "mkdir" ["-p", ks] -- do not assume that ks is a subdirectory of d
+            chmodDir ("700" :: String) ks
+            -- procD "chown" [" ", d]
+            encryptVault (toSBytes pw) v Vault {vault = []}
     )
-    (\(e' :: SomeException) -> do
-        printf w "could not initialize vault file\n"
-        return ()
+    (\(e' :: SomeException) ->
+        print "could not initialize vault file\n"
     )
 
 
@@ -142,7 +146,7 @@ printVault cfg = catch (
         printf (s%"\n") . toText $ encodePretty v
     )
     (\(e' :: SomeException) -> do
-        printf w $ "could not print vault\n"
+        printf w "could not print vault\n"
         return ()
     )
 
@@ -202,7 +206,7 @@ insertSSHKey cfg m s' = do
     case filter (\h -> h == host ve) $ fmap host (vault v) of
         [] -> encryptVault
                 (toSBytes m) (Cfg.file cfg) (Vault (vault v ++ [ve]))
-        _  -> error $ "failed to insert host " ++ host ve ++ ": already in vault"
+        _  -> print $ "failed to insert host " ++ host ve ++ ": already in vault"
 
 
 b64EncryptSSHKeyPassphrase :: IO ()
@@ -214,7 +218,7 @@ b64EncryptSSHKeyPassphrase = do
     aesk <- encryptAES m $ toBytes k
     let b64aesk = B64.encode $ toBytes aesk
     case B64.decode b64aesk of
-        Left  _ -> print "could not b64encode/encrypt\n"
-        Right x -> do
-            y <- decryptAES m x
+        Left  _ -> print "could not b64encode/encrypt"
+        Right x' -> do
+            y <- decryptAES m x'
             print y

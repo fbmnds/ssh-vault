@@ -9,7 +9,6 @@ module SSHVault.Vault
     , User (..)
     , Host
     , SSHKey (..)
---    , putVaultFile
     , encryptVault
     , decryptVault
     , getUser
@@ -39,6 +38,7 @@ import           GHC.Generics
 data SSHKey =
   SSHKey { phrase64 :: String
          , key_file :: String
+         , key_content :: String
          } deriving (Show, Generic, Eq)
 instance JSON.FromJSON SSHKey
 instance JSON.ToJSON SSHKey
