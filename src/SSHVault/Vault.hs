@@ -84,13 +84,14 @@ updateVault ve v = v { vault = filter (\ve' -> host ve' == hn) (vault v) ++ [ve]
 
 decryptVault :: (ToSBytes a, JSON.FromJSON b) => a -> String -> IO b
 decryptVault key fn = do
-  v <- B.readFile fn >>= \v' -> decryptAES (genAESKey $ SSHVault.SBytes.toText key) v'
-  case B64.decode v of
+  v <- B.readFile fn
+    >>= decryptAES (genAESKey $ SSHVault.SBytes.toText key)
+  case B64.decode (toBytes v) of
     Left s' -> error s'
     Right s' -> return . fromMaybe (error "failed to JSON.decode in decryptVault") . JSON.decode $ toLUBytes s'
 
 encryptVault :: BA.ScrubbedBytes -> String -> Vault -> IO ()
 encryptVault k fn v =
   encryptAES (genAESKey $ SSHVault.SBytes.toText k) (B64.encode . toBytes $ JSON.encode v)
-  >>= B.writeFile fn
+  >>= \ c' -> B.writeFile fn (toBytes c')
   >> chmodFile ("600" :: String) fn

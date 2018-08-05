@@ -25,7 +25,7 @@ import           SSHVault.SBytes
 import qualified Data.Text as T
 import qualified Data.ByteString as B
 --import qualified Data.ByteString.Lazy as BL
---import qualified Data.ByteArray as BA
+import qualified Data.ByteArray as BA
 import qualified Data.ByteString.UTF8 as CU
 --import           Data.Binary (decode)
 
@@ -52,16 +52,16 @@ split4 (w' : x' : y' : z' : xs') = w': x' : y' : z': '-' : split4 xs'
 split4 _ = []
 
 substring :: String -> String -> Bool
-substring (x:xs) [] = False
+substring (_:_) [] = False
 substring xs ys
     | prefix xs ys = True
     | substring xs (tail ys) = True
     | otherwise = False
 
 prefix :: String -> String -> Bool
-prefix [] ys = True
-prefix (x:xs) [] = False
-prefix (x:xs) (y:ys) = (x == y) && prefix xs ys
+prefix [] _ = True
+prefix _ [] = False
+prefix (x':xs) (y:ys) = (x' == y) && prefix xs ys
 
 
 stripChars :: String -> String -> String
@@ -74,13 +74,18 @@ randS :: Int -> IO String
 randS n = take n . stripChars "$\\\"'{}`" . randomRs (' ','~') <$> newStdGen
 
 
-encryptAES :: CU.ByteString -> CU.ByteString -> IO CU.ByteString
-encryptAES = CTR.encrypt
+encryptAES :: ToSBytes a => BA.ScrubbedBytes -> a -> IO BA.ScrubbedBytes
+-- CU.ByteString -> CU.ByteString -> IO CU.ByteString
+encryptAES key msg = do
+  c' <- CTR.encrypt (toBytes key) (toBytes msg)
+  return $ toSBytes c'
 
 
-decryptAES :: CU.ByteString -> CU.ByteString -> IO CU.ByteString
-decryptAES = CTR.decrypt
-
+decryptAES :: ToSBytes a => BA.ScrubbedBytes -> a -> IO BA.ScrubbedBytes
+-- CU.ByteString -> CU.ByteString -> IO CU.ByteString
+decryptAES key cipher = do
+  c' <- CTR.decrypt (toBytes key) (toBytes cipher)
+  return $ toSBytes c'
 
 genSHA256 :: T.Text -> String
 genSHA256 key =
@@ -88,11 +93,11 @@ genSHA256 key =
       h = hash $ toBytes key in
   show h
 
-genAESKey :: T.Text -> B.ByteString
-genAESKey key = toBytes . take2nd $ genSHA256 key
+genAESKey :: T.Text -> BA.ScrubbedBytes
+genAESKey key = toSBytes . take2nd $ genSHA256 key
 
 
-getKeyPhrase :: IO B.ByteString
+getKeyPhrase :: IO BA.ScrubbedBytes
 getKeyPhrase = do
   old <- hGetEcho stdin
   putStr "Encryption key phrase: "

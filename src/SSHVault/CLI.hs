@@ -8,7 +8,7 @@ import Options.Applicative
 
 import SSHVault.Common
 import SSHVault.Vault
-import SSHVault.Vault.Config
+import qualified SSHVault.Vault.Config as Cfg
 import SSHVault.Workflows
 import SSHVault.SBytes
 
@@ -17,7 +17,7 @@ import qualified Data.Aeson as JSON
 import qualified Data.ByteString.Base64 as B64
 
 
-import System.IO
+--import System.IO
 
 
 data Opts = Opts
@@ -37,40 +37,17 @@ cli = do
     (opts :: Opts) <- execParser optsParser
     case optCommand opts of
         Insert s' -> do
-            (ve :: VaultEntry) <- return . fromMaybe (error "failed to JSON.decode the given input") . JSON.decode $ toLUBytes s'
-            cfg <- genDefaultConfig
-            m <- getKeyPhrase
-            (v :: Vault) <- decryptVault m (file cfg)
-            case filter (\ h ->  h == host ve) $ fmap host (vault v) of
-                [] -> encryptVault (toSBytes m) (file cfg) (Vault (vault v ++ [ve]))
-                _ -> error $ "failed to insert host " ++ host ve ++ ": already in vault"
-        Init -> initVault
+            cfg <- Cfg.genDefaultConfig
+            m   <- getKeyPhrase
+            insertSSHKey cfg m s'
+        Init -> do
+            cfg <- Cfg.genDefaultConfig
+            initVault cfg
         Print -> do
-            cfg <- genDefaultConfig
+            cfg <- Cfg.genDefaultConfig
             printVault cfg
-        B64Encrypt ->  do
-            putStrLn "1. Masterpassword"
-            m <- getKeyPhrase
-            print m
-            putStrLn "2. SSH key"
-            k <- getLine
-            print k
-            aesk <- encryptAES m $ toBytes k
-            let b64aesk = B64.encode aesk
-            print b64aesk
-            case B64.decode b64aesk of
-                Left e -> print e
-                Right x -> do
-                    y <- decryptAES m x
-                    print y
+        B64Encrypt -> b64EncryptSSHKeyPassphrase
         SSHAdd h u -> sshAdd h u
-  -- ssh-add " ++ key_file u ++ "; interact }'"]
-
-
--- expect -c 'expect "\n" { eval spawn ssh -oStrictHostKeyChecking=no -oCheckHostIP=no usr@$myhost.example.com; interact }'
-
-
-    -- putStrLn ("verbosity: " ++ show (optVerbose opts))
   where
     optsParser :: ParserInfo Opts
     optsParser =
@@ -114,13 +91,13 @@ cli = do
     b64encryptCommand =
         command
             "b64encrypt"
-            (info (pure B64Encrypt) (progDesc "Encrypt and b64encode a phrase by password"))
+            (info (pure B64Encrypt) (progDesc "Encrypt and b64encode a SSH key passphrase"))
 
     sshaddCommand :: Mod CommandFields Command
     sshaddCommand =
         command
             "ssh-add"
-            (info sshaddOptions (progDesc "Activate SSH key \"host:user\""))
+            (info sshaddOptions (progDesc "Activate SSH key for user@host"))
     sshaddOptions :: Parser Command
     sshaddOptions =
         SSHAdd <$>
