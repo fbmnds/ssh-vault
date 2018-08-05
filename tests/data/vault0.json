@@ -6,24 +6,30 @@
 				"host_key": "",
 				"ip4": "",
 				"ip6": "",
-				"port": 22
+				"port": 22,
+				"created_at" : "2018-08-05 17:58:39.67413695 UTC"
 			},
 			"users" : [
 				{   "user": "root",
-					"sshkey": {
+					"sshkeys": [{
 					    "phrase64": "cm9vdCpib3gxKioq",
 					    "key_file": "/root/.ssh/id_box1",
-					    "key_content": "##################"
-					}
+					    "key_content": "##################",
+				        "created_at" : "2018-08-05 17:58:39.67413695 UTC"
+					}],
+				    "created_at" : "2018-08-05 17:58:39.67413695 UTC"
 				},
 				{   "user": "a",
-				    "sshkey": {
+				    "sshkeys": [{
 					    "phrase64": "YSpib3gxKioqKioq",
 					    "key_file": "/home/a/.ssh/id_box1",
-					    "key_content": "##################"
-					}
+					    "key_content": "##################",
+				        "created_at" : "2018-08-05 17:58:39.67413695 UTC"
+					}],
+				    "created_at" : "2018-08-05 17:58:39.67413695 UTC"
 				}
-			]
+			],
+			"created_at" : "2018-08-05 17:58:39.67413695 UTC"
 		},
 		{
 			"host": "box2",
@@ -31,24 +37,30 @@
 				"host_key": "",
 				"ip4": "",
 				"ip6": "",
-				"port": 22
+				"port": 22,
+				"created_at" : "2018-08-05 17:58:39.67413695 UTC"
 			},
 			"users" : [
 				{   "user": "root",
-					"sshkey" : {
+					"sshkeys" : [{
 					    "phrase64": "cm9vdCpib3gyKioq",
 					    "key_file": "/root/.ssh/id_box2",
-					    "key_content": "##################"
-					}
+					    "key_content": "##################",
+				        "created_at" : "2018-08-05 17:58:39.67413695 UTC"
+					}],
+				    "created_at" : "2018-08-05 17:58:39.67413695 UTC"
 				},
 				{   "user": "b",
-					"sshkey" : {
+					"sshkeys" : [{
 					    "phrase64": "Yipib3gyKioqKioq",
 					    "key_file": "/home/b/.ssh/id_box2",
-					    "key_content": "##################"
-					}
+					    "key_content": "##################",
+						"created_at" : "2018-08-05 17:58:39.67413695 UTC"
+					}],
+					"created_at" : "2018-08-05 17:58:39.67413695 UTC"
 				}
-			]
+			],
+			"created_at" : "2018-08-05 17:58:39.67413695 UTC"
 		},
 		{
 			"host": "box3",
@@ -56,38 +68,48 @@
 				"host_key": "",
 				"ip4": "",
 				"ip6": "",
-				"port": 22
+				"port": 22,
+				"created_at" : "2018-08-05 17:58:39.67413695 UTC"
 			},
 			"users" : [
 				{   "user": "root",
-					"sshkey" : {
+					"sshkeys" : [{
 					    "phrase64": "cm9vdCpib3gyKioq",
 					    "key_file": "/root/.ssh/id_2048",
-					    "key_content": "##################"
-					}
+					    "key_content": "##################",
+				 		"created_at" : "2018-08-05 17:58:39.67413695 UTC"
+					}],
+				 	"created_at" : "2018-08-05 17:58:39.67413695 UTC"
 				},
 				{   "user": "c",
-					"sshkey": {
+					"sshkeys": [{
 					    "phrase64": "Yypib3gzKioqKioq",
 					    "key_file": "/home/c/.ssh/id_2048",
-					    "key_content": "##################"
-					}
+					    "key_content": "##################",
+				 		"created_at" : "2018-08-05 17:58:39.67413695 UTC"
+					}],
+				 	"created_at" : "2018-08-05 17:58:39.67413695 UTC"
 				},
 				{   "user": "d",
-					"sshkey": {
+					"sshkeys": [{
 					    "phrase64": "ZCpib3gzKioqKioq",
 					    "key_file": "/home/d/.ssh/id_2048",
-					    "key_content": "##################"
-					}
+					    "key_content": "##################",
+				 		"created_at" : "2018-08-05 17:58:39.67413695 UTC"
+					}],
+				 	"created_at" : "2018-08-05 17:58:39.67413695 UTC"
 				},
 				{   "user": "e",
-					"sshkey": {
+					"sshkeys": [{
 						"phrase64": "e*ZSpib3gzKioqKioq",
 					    "key_file": "/home/e/.ssh/id_2048",
-					    "key_content": "##################"
-					}
+					    "key_content": "##################",
+				 		"created_at" : "2018-08-05 17:58:39.67413695 UTC"
+					}],
+				 	"created_at" : "2018-08-05 17:58:39.67413695 UTC"
 				}
-			]
+			],
+			"created_at" : "2018-08-05 17:58:39.67413695 UTC"
 		}
 	]
 }

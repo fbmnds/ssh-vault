@@ -1,5 +1,6 @@
 
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE DeriveGeneric #-}
 
@@ -38,19 +39,24 @@ import           GHC.Generics
 
 
 type Phrase64 = String
+type UTC = String
 data SSHKey =
   SSHKey { phrase64    :: Phrase64
          , key_file    :: String
          , key_content :: String
+         , created_at  :: UTC
          } deriving (Show, Generic, Eq)
 instance JSON.FromJSON SSHKey
-instance JSON.ToJSON SSHKey
+instance JSON.ToJSON   SSHKey
+instance Ord           SSHKey where
+  (SSHKey _ _ _ c1) `compare` (SSHKey _ _ _ c2) = c1 `compare` c2
 
 
 type UserName = String
 data User =
-  User { user   :: UserName
-       , sshkey :: SSHKey
+  User { user        :: UserName
+       , sshkeys     :: [SSHKey]
+       , created_at  :: UTC
        } deriving (Show, Generic, Eq)
 instance JSON.FromJSON User
 instance JSON.ToJSON User
@@ -58,19 +64,21 @@ instance JSON.ToJSON User
 
 type HostName = String
 data HostData =
-  HostData { host_key :: String
-           , ip4      :: String
-           , ip6      :: String
-           , port     :: Int
+  HostData { host_key   :: String
+           , ip4        :: String
+           , ip6        :: String
+           , port       :: Int
+           , created_at :: UTC
            } deriving (Show, Generic, Eq)
 instance JSON.FromJSON HostData
 instance JSON.ToJSON HostData
 
 
 data VaultEntry =
-  VaultEntry { host      :: HostName
-             , host_data :: HostData
-             , users     :: [User]
+  VaultEntry { host       :: HostName
+             , host_data  :: HostData
+             , users      :: [User]
+             , created_at :: UTC
              } deriving (Show, Generic, Eq)
 instance JSON.FromJSON VaultEntry
 instance JSON.ToJSON VaultEntry

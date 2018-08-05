@@ -1,6 +1,7 @@
 -- :set -XOverloadedStrings
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE DuplicateRecordFields #-}
 
 module SSHVault.Workflows
     ( initVault
@@ -22,19 +23,19 @@ import SSHVault.Vault.Config as Cfg
 import SSHVault.SBytes
 import SSHVault.Common
 
-import Control.Monad.Except
+--import Control.Monad.Except
 import Control.Exception (SomeException, catch)
 
 import Data.Maybe (fromMaybe)
-import Data.Text (split)
-import Data.List (intercalate)
-import qualified Data.ByteString.Lazy as BL
+--import Data.Text (split)
+--import Data.List (intercalate)
+--import qualified Data.ByteString.Lazy as BL
 import qualified Data.ByteString.Base64 as B64
 import qualified Data.Aeson as JSON
 import Data.Aeson.Encode.Pretty
 import qualified Data.ByteArray as BA
 
-import System.IO
+--import System.IO
 
 import qualified Turtle as Tu
 import Turtle.Prelude (testfile)
@@ -47,7 +48,7 @@ getSSHKeyphrase m u' = case B64.decode . toBytes $ phrase64 s' of
     Left _   -> error "failed to b64decode SSH key passphrase"
     Right s0 -> decryptAES m s0
     where
-        s' = sshkey u'
+        s' = maximum $ sshkeys u'
 
 
 -- TODO avoid double entries in ~/.ssh/authorized_keys
@@ -66,11 +67,11 @@ uploadSSHKey cfg m h u' nkey = catch (
             ]
     )
     (\(_ :: SomeException) ->
-        print "could not upload SSH key"
+        print ("could not upload SSH key" :: String)
     )
     where
             u''  = user u'
-            s'   = sshkey u'
+            s'   = maximum $ sshkeys u'
             priv = key_file s'
             npub = key_file nkey ++ ".pub"
 
@@ -111,7 +112,8 @@ genSSHKey cfg m h u' = do
     chmodSSHFile fn
     printf "[+] chmod 600 on new SSH file\n"
     c' <- readFile fn
-    return SSHKey { phrase64 = pw, key_file = fn, key_content = c' }
+    t' <- getUTC
+    return SSHKey { phrase64 = pw, key_file = fn, key_content = c', created_at = t' }
 
 
 initVault :: Cfg.Config -> IO ()
@@ -133,7 +135,7 @@ initVault cfg = catch (
             encryptVault (toSBytes pw) v Vault {vault = []}
     )
     (\(_ :: SomeException) ->
-        print "could not initialize vault file\n"
+        print ("could not initialize vault file" :: String)
     )
 
 
@@ -145,7 +147,7 @@ printVault cfg = catch (
         printf (s%"\n") . toText $ encodePretty v
     )
     (\(_ :: SomeException) ->
-        printf w "could not print vault\n"
+        print ("could not print vault" :: String)
     )
 
 
@@ -160,9 +162,10 @@ sshAdd h u' = catch (
             [ve] -> case filter (\u'' -> u' == user u'') (users ve) of
                 []   -> error "user not found"
                 [u''] -> do
-                    let (ph', fn, exp') =
-                            ( B64.decode . toBytes . phrase64 $ sshkey u''
-                            , key_file $ sshkey u''
+                    let (max, ph', fn, exp') =
+                            ( maximum $ sshkeys u''
+                            , B64.decode . toBytes . phrase64 $ max
+                            , key_file max
                             , "ssh-add"
                             )
                     ph <- case ph' of
@@ -174,7 +177,7 @@ sshAdd h u' = catch (
                             , "send \"" ++ toString ph ++ "\\r\""
                             , "expect eof"
                             ]
-                _ -> error "vault entry for user inconsistent"
+
             _ -> error "vault entry for host inconsistent"
         return ()
     )
@@ -219,4 +222,4 @@ b64EncryptSSHKeyPassphrase = do
         Left  _ -> print ("could not b64encode/encrypt" :: String)
         Right x' -> do
             y <- decryptAES m x'
-            print y
+            if (toString y == k) then print $ toString b64aesk else print ("encode/decode error" :: String)

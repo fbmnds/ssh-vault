@@ -1,6 +1,7 @@
 
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE DuplicateRecordFields #-}
 --{-# LANGUAGE DeriveGeneric #-}
 module Main where
 
@@ -65,11 +66,11 @@ updateVault01 :: SSHKey -> Vault
 updateVault01 s01' =
   let
     s01 = s01'
-    s02 = SSHKey "YSpib3gxKioqKioq" "/home/a/.ssh/id_box1" "##################"
-    u01 = User "root" s01
-    u02 = User "a" s02
-    h0 = HostData "" "" "" 22
-    ve0 = VaultEntry  "box1" h0 [u01,u02] in
+    s02 = SSHKey "YSpib3gxKioqKioq" "/home/a/.ssh/id_box1" "##################" "2018-08-05 17:58:39.67413695 UTC"
+    u01 = User "root" [s01] "2018-08-05 17:58:39.67413695 UTC"
+    u02 = User "a" [s02] "2018-08-05 17:58:39.67413695 UTC"
+    h0 = HostData "" "" "" 22 "2018-08-05 17:58:39.67413695 UTC"
+    ve0 = VaultEntry  "box1" h0 [u01,u02] "2018-08-05 17:58:39.67413695 UTC" in
   Vault [ve0]
 
 genTestConfig :: IO Cfg.Config
@@ -86,10 +87,14 @@ test1 dcfg = do
   h <- Tu.home
   let fn = toString (format fp h) ++ "/.ssh/vault" ++ ".NEW"
       vk = "0123456789" :: T.Text
-      u' = User "root" $ SSHKey "root*box1***" "/root/.ssh/id_box1" "##################"
+      sk = [SSHKey "root*box1***"
+                  "/root/.ssh/id_box1"
+                  "##################"
+                  "2018-08-05 17:58:39.67413695 UTC"]
+      u' = User "root" sk "2018-08-05 17:58:39.67413695 UTC"
 
   s' <- genSSHKey dcfg (toSBytes (""::String)) "root" u'
-  let v1 = updateVault01 (SSHKey (phrase64 s') (key_file s') "##################")
+  let v1 = updateVault01 (SSHKey (phrase64 s') (key_file s') "##################" "2018-08-05 17:58:39.67413695 UTC")
   printf s "+++ OK, passed genSSHKey test.\n"
 
   encryptVault (toSBytes $ genAESKey vk) fn v1

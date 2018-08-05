@@ -18,6 +18,7 @@ module SSHVault.Common
   , split4
   , substring
   , prefix
+  , getUTC
   )
 
 where
@@ -32,6 +33,7 @@ import qualified Data.ByteString as B
 import qualified Data.ByteArray as BA
 import qualified Data.ByteString.UTF8 as CU
 --import           Data.Binary (decode)
+import Data.Time.Clock as Clock
 
 import qualified Crypto.Simple.CTR as CTR
 import           Crypto.Hash (hash, SHA256 (..), Digest)
@@ -44,6 +46,10 @@ import qualified Turtle.Prelude as Tu
 import qualified Turtle as Tu
 import           Turtle.Format
 
+
+
+getUTC :: IO String
+getUTC = show <$> Clock.getCurrentTime
 
 
 take2nd :: [a] -> [a]
