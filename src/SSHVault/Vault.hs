@@ -12,6 +12,7 @@ module SSHVault.Vault
 --    , putVaultFile
     , encryptVault
     , decryptVault
+    , getUser
     , updateUsers
     , updateVaultEntry
     , updateVault
@@ -70,6 +71,10 @@ newtype Vault =
 instance JSON.FromJSON Vault
 instance JSON.ToJSON Vault
 
+
+getUser :: Vault -> String -> String -> [User]
+getUser v h u' =
+  filter (\ uvh -> user uvh == u') . concatMap users $ filter (\ ve -> host ve == h) (vault v)
 
 
 updateUsers :: User -> [User] -> [User]

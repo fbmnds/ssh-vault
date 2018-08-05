@@ -43,8 +43,7 @@ library
         random -any,
         old-time -any,
         base64-bytestring -any,
-        optparse-applicative -any,
-        simplessh -any
+        optparse-applicative -any
 
 executable ssh-vault
     main-is: Main.hs
@@ -79,8 +78,7 @@ executable ssh-vault
         random -any,
         old-time -any,
         base64-bytestring -any,
-        optparse-applicative -any,
-        simplessh -any
+        optparse-applicative -any
 
 test-suite ssh-vault-tests
     type: exitcode-stdio-1.0
@@ -118,5 +116,4 @@ test-suite ssh-vault-tests
         random -any,
         old-time -any,
         base64-bytestring -any,
-        optparse-applicative -any,
-        simplessh -any
+        optparse-applicative -any

@@ -31,6 +31,7 @@ data Command
     | Print
     | B64Encrypt
     | SSHAdd String String
+    | UploadSSHKey String String
 
 cli :: IO ()
 cli = do
@@ -47,7 +48,18 @@ cli = do
             cfg <- Cfg.genDefaultConfig
             printVault cfg
         B64Encrypt -> b64EncryptSSHKeyPassphrase
-        SSHAdd h u -> sshAdd h u
+        SSHAdd h u' -> sshAdd h u'
+        UploadSSHKey h u' -> do
+            cfg <- Cfg.genDefaultConfig
+            m   <- getKeyPhrase
+            (v :: Vault) <- decryptVault (toSBytes m) (Cfg.file cfg)
+            user <- case getUser v h u' of
+                [u''] -> return u''
+                _     -> error "vault inconsistent"
+            newkey <- genSSHKey cfg m h user
+            print $ JSON.toJSON newkey
+            print "\n"
+            uploadSSHKey cfg m h user newkey
   where
     optsParser :: ParserInfo Opts
     optsParser =
@@ -63,7 +75,12 @@ cli = do
     programOptions :: Parser Opts
     programOptions =
         Opts <$> switch (long "verbose" <> short 'v' <> help "Toggle verbosity") <*>
-        hsubparser (insertCommand <> initCommand <> printCommand <> b64encryptCommand <> sshaddCommand)
+        hsubparser (  insertCommand
+                   <> initCommand
+                   <> printCommand
+                   <> b64encryptCommand
+                   <> sshaddCommand
+                   <> uploadSSHKeyCommand)
 
     insertCommand :: Mod CommandFields Command
     insertCommand =
@@ -101,5 +118,16 @@ cli = do
     sshaddOptions :: Parser Command
     sshaddOptions =
         SSHAdd <$>
-        strArgument (metavar "HOST" <> help "Target host for SSH Key") <*>
-        strArgument (metavar "USER" <> help "Target user for SSH Key")
+        strArgument (metavar "HOST" <> help "Target host for SSH key activation") <*>
+        strArgument (metavar "USER" <> help "Target user for SSH key activation")
+
+    uploadSSHKeyCommand :: Mod CommandFields Command
+    uploadSSHKeyCommand =
+        command
+            "upload-sshkey"
+            (info uploadSSHKeyOptions (progDesc "Upload SSH key for user@host"))
+    uploadSSHKeyOptions :: Parser Command
+    uploadSSHKeyOptions =
+        UploadSSHKey <$>
+        strArgument (metavar "HOST" <> help "Target host for SSH key upload") <*>
+        strArgument (metavar "USER" <> help "Target user for SSH key upload")

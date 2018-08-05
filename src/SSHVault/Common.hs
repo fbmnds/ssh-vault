@@ -8,6 +8,7 @@ module SSHVault.Common
   , getKeyPhrase
   , procD
   , shellD
+  , execExp
   , rand1000
   , randS
   , chmodFile
@@ -21,7 +22,9 @@ module SSHVault.Common
 where
 
 import           SSHVault.SBytes
+import qualified SSHVault.Vault.Config as Cfg
 
+import Data.List (intercalate)
 import qualified Data.Text as T
 import qualified Data.ByteString as B
 --import qualified Data.ByteString.Lazy as BL
@@ -129,3 +132,15 @@ chmodFile m fn = procD ("chmod" :: Tu.Text) [toText m, toText fn]
 
 chmodDirR :: (ToSBytes a, ToSBytes b) => a -> b -> IO ()
 chmodDirR m fn = procD ("chmod" :: Tu.Text) ["-R", toText m, toText fn]
+
+
+execExp :: Cfg.Config -> String -> [String] -> IO ()
+execExp cfg exp' ls = do
+  r3 <- rand1000 3
+  let fn = Cfg.dir cfg ++ "/" ++ exp' ++ "-" ++ intercalate "-" (map show r3) ++ ".exp"
+  _ <- procD "touch" [fn]
+  _ <- chmodFile ("600" :: String) fn
+  _ <- writeFile fn (intercalate "\n" ls)
+  _ <- procD "expect" ["-f", fn]
+  _ <- procD "rm" [fn]
+  return ()
