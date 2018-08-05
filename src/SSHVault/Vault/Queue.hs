@@ -10,7 +10,7 @@ module SSHVault.Vault.Queue
 import SSHVault.Vault
 
 
-data QueueEntry = UserUpdate (Host, User) | HostUpdate VaultEntry
+data QueueEntry = UserUpdate (HostName, User) | HostUpdate VaultEntry
 type Queue = [QueueEntry]
 
 

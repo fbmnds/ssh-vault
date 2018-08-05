@@ -2,10 +2,12 @@
 	"vault": [
 		{
 			"host": "box1",
-			"host_key": "",
-			"ip4": "",
-			"ip6": "",
-			"port": 22,
+			"host_data" : {
+				"host_key": "",
+				"ip4": "",
+				"ip6": "",
+				"port": 22
+			},
 			"users" : [
 				{   "user": "root",
 					"sshkey": {
@@ -25,10 +27,12 @@
 		},
 		{
 			"host": "box2",
-			"host_key": "",
-			"ip4": "",
-			"ip6": "",
-			"port": 22,
+			"host_data" : {
+				"host_key": "",
+				"ip4": "",
+				"ip6": "",
+				"port": 22
+			},
 			"users" : [
 				{   "user": "root",
 					"sshkey" : {
@@ -48,10 +52,12 @@
 		},
 		{
 			"host": "box3",
-			"host_key": "",
-			"ip4": "",
-			"ip6": "",
-			"port": 22,
+			"host_data" : {
+				"host_key": "",
+				"ip4": "",
+				"ip6": "",
+				"port": 22
+			},
 			"users" : [
 				{   "user": "root",
 					"sshkey" : {

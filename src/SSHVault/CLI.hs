@@ -12,12 +12,8 @@ import qualified SSHVault.Vault.Config as Cfg
 import SSHVault.Workflows
 import SSHVault.SBytes
 
-import           Data.Maybe (fromMaybe)
 import qualified Data.Aeson as JSON
-import qualified Data.ByteString.Base64 as B64
 
-
---import System.IO
 
 
 data Opts = Opts

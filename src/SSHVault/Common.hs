@@ -104,7 +104,7 @@ genAESKey key = toSBytes . take2nd $ genSHA256 key
 getKeyPhrase :: IO BA.ScrubbedBytes
 getKeyPhrase = do
   old <- hGetEcho stdin
-  putStr "Encryption key phrase: "
+  putStr "Vault password: "
   hFlush stdout
   hSetEcho stdin False
   keyPhrase <- getLine

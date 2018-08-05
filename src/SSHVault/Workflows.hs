@@ -52,7 +52,7 @@ getSSHKeyphrase m u' = case B64.decode . toBytes $ phrase64 s' of
 
 -- TODO avoid double entries in ~/.ssh/authorized_keys
 -- TODO add port parameter
-uploadSSHKey :: Cfg.Config -> BA.ScrubbedBytes -> Host -> User -> SSHKey -> IO ()
+uploadSSHKey :: Cfg.Config -> BA.ScrubbedBytes -> HostName -> User -> SSHKey -> IO ()
 uploadSSHKey cfg m h u' nkey = catch (
     do
         ph <- getSSHKeyphrase m u'
@@ -65,9 +65,8 @@ uploadSSHKey cfg m h u' nkey = catch (
             , "expect eof"
             ]
     )
-    (\(e' :: SomeException) -> do
-        printf w "could not upload SSH key"
-        return ()
+    (\(_ :: SomeException) ->
+        print "could not upload SSH key"
     )
     where
             u''  = user u'
@@ -76,7 +75,7 @@ uploadSSHKey cfg m h u' nkey = catch (
             npub = key_file nkey ++ ".pub"
 
 
-genSSHFilename :: Cfg.Config -> Host -> User -> IO String
+genSSHFilename :: Cfg.Config -> HostName -> User -> IO String
 genSSHFilename cfg h u' = do
     date <- Tu.date
     let ud = format (s % w) (toText . user $ u') date
@@ -89,7 +88,7 @@ chmodSSHFile :: ToSBytes a => a -> IO ()
 chmodSSHFile = chmodFile ("600" :: String)
 
 
-genSSHKey :: Cfg.Config -> BA.ScrubbedBytes -> Host -> User -> IO SSHKey
+genSSHKey :: Cfg.Config -> BA.ScrubbedBytes -> HostName -> User -> IO SSHKey
 genSSHKey cfg m h u' = do
     printf "[*] generate new SSH key password\n"
     pw' <- randS 20
@@ -133,7 +132,7 @@ initVault cfg = catch (
             -- procD "chown" [" ", d]
             encryptVault (toSBytes pw) v Vault {vault = []}
     )
-    (\(e' :: SomeException) ->
+    (\(_ :: SomeException) ->
         print "could not initialize vault file\n"
     )
 
@@ -145,13 +144,12 @@ printVault cfg = catch (
         (v :: Vault) <- decryptVault (toSBytes pw) (file cfg)
         printf (s%"\n") . toText $ encodePretty v
     )
-    (\(e' :: SomeException) -> do
+    (\(_ :: SomeException) ->
         printf w "could not print vault\n"
-        return ()
     )
 
 
-sshAdd :: String -> String -> IO ()
+sshAdd :: HostName -> UserName -> IO ()
 sshAdd h u' = catch (
     do
         cfg          <- genDefaultConfig
@@ -218,7 +216,7 @@ b64EncryptSSHKeyPassphrase = do
     aesk <- encryptAES m $ toBytes k
     let b64aesk = B64.encode $ toBytes aesk
     case B64.decode b64aesk of
-        Left  _ -> print "could not b64encode/encrypt"
+        Left  _ -> print ("could not b64encode/encrypt" :: String)
         Right x' -> do
             y <- decryptAES m x'
             print y

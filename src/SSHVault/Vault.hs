@@ -7,7 +7,10 @@ module SSHVault.Vault
     ( Vault (..)
     , VaultEntry (..)
     , User (..)
-    , Host
+    , HostName
+    , HostData (..)
+    , UserName
+    , Phrase64
     , SSHKey (..)
     , encryptVault
     , decryptVault
@@ -34,45 +37,53 @@ import           GHC.Generics
 --import Turtle
 
 
-
+type Phrase64 = String
 data SSHKey =
-  SSHKey { phrase64 :: String
-         , key_file :: String
+  SSHKey { phrase64    :: Phrase64
+         , key_file    :: String
          , key_content :: String
          } deriving (Show, Generic, Eq)
 instance JSON.FromJSON SSHKey
 instance JSON.ToJSON SSHKey
 
 
+type UserName = String
 data User =
-  User { user :: String
+  User { user   :: UserName
        , sshkey :: SSHKey
        } deriving (Show, Generic, Eq)
 instance JSON.FromJSON User
 instance JSON.ToJSON User
 
 
-type Host = String
+type HostName = String
+data HostData =
+  HostData { host_key :: String
+           , ip4      :: String
+           , ip6      :: String
+           , port     :: Int
+           } deriving (Show, Generic, Eq)
+instance JSON.FromJSON HostData
+instance JSON.ToJSON HostData
+
+
 data VaultEntry =
-  VaultEntry { host  :: Host
-        , host_key :: String
-        , ip4 :: String
-        , ip6 :: String
-        , port :: Int
-        , users :: [User]
-        } deriving (Show, Generic, Eq)
+  VaultEntry { host      :: HostName
+             , host_data :: HostData
+             , users     :: [User]
+             } deriving (Show, Generic, Eq)
 instance JSON.FromJSON VaultEntry
 instance JSON.ToJSON VaultEntry
 
 
 newtype Vault =
   Vault { vault :: [VaultEntry]
-    } deriving (Show, Generic, Eq)
+        } deriving (Show, Generic, Eq)
 instance JSON.FromJSON Vault
 instance JSON.ToJSON Vault
 
 
-getUser :: Vault -> String -> String -> [User]
+getUser :: Vault -> HostName -> UserName -> [User]
 getUser v h u' =
   filter (\ uvh -> user uvh == u') . concatMap users $ filter (\ ve -> host ve == h) (vault v)
 

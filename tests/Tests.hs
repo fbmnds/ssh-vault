@@ -6,13 +6,6 @@ module Main where
 
 import qualified SSHVault.Vault.Config as Cfg
 import SSHVault.Vault
-    ( Vault (..)
-    , VaultEntry (..)
-    , User (..)
-    , SSHKey (..)
-    , encryptVault
-    , decryptVault
-    )
 --import SSHVault.Vault.Queue
 import SSHVault.Workflows
 import SSHVault.SBytes
@@ -29,12 +22,11 @@ import Data.Aeson
 import Test.QuickCheck
 
 import qualified Turtle as Tu
+import qualified Turtle.Prelude as Tu
 import Turtle.Format
 
 instance Arbitrary B.ByteString where arbitrary = B.pack <$> arbitrary
 instance CoArbitrary B.ByteString where coarbitrary = coarbitrary . B.unpack
-
-
 
 
 
@@ -76,7 +68,8 @@ updateVault01 s01' =
     s02 = SSHKey "YSpib3gxKioqKioq" "/home/a/.ssh/id_box1" "##################"
     u01 = User "root" s01
     u02 = User "a" s02
-    ve0 = VaultEntry  "box1" "" "" "" 22 [u01,u02] in
+    h0 = HostData "" "" "" 22
+    ve0 = VaultEntry  "box1" h0 [u01,u02] in
   Vault [ve0]
 
 genTestConfig :: IO Cfg.Config
@@ -88,14 +81,13 @@ genTestConfig = do
       , Cfg.keystore = toString (format fp vdir) ++ "/tests/data/.vault/STORE"
       }
 
-test1 :: IO ()
-test1 = do
+test1 :: Cfg.Config -> IO ()
+test1 dcfg = do
   h <- Tu.home
   let fn = toString (format fp h) ++ "/.ssh/vault" ++ ".NEW"
       vk = "0123456789" :: T.Text
       u' = User "root" $ SSHKey "root*box1***" "/root/.ssh/id_box1" "##################"
 
-  dcfg <- genTestConfig
   s' <- genSSHKey dcfg (toSBytes (""::String)) "root" u'
   let v1 = updateVault01 (SSHKey (phrase64 s') (key_file s') "##################")
   printf s "+++ OK, passed genSSHKey test.\n"
@@ -130,5 +122,7 @@ prop_scrubbedbytes t =
 main :: IO ()
 main = do
   test0
-  test1
+  dcfg <- genTestConfig
+  test1 dcfg
   quickCheck prop_scrubbedbytes
+  shellD $ "rm " ++ Cfg.keystore dcfg ++ "/*"
