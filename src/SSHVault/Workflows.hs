@@ -222,4 +222,4 @@ b64EncryptSSHKeyPassphrase = do
         Left  _ -> print ("could not b64encode/encrypt" :: String)
         Right x' -> do
             y <- decryptAES m x'
-            if (toString y == k) then print $ toString b64aesk else print ("encode/decode error" :: String)
+            if toString y == k then print $ toString b64aesk else print ("encode/decode error" :: String)

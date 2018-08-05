@@ -49,12 +49,18 @@ cli = do
             cfg <- Cfg.genDefaultConfig
             m   <- getKeyPhrase
             (v :: Vault) <- decryptVault (toSBytes m) (Cfg.file cfg)
+            let users = getUsers v h
             user' <- case getUser v h u' of
                 [u''] -> return u''
+                []    -> error $ "missing user " ++ u'
                 _     -> error "vault inconsistent"
             newkey <- genSSHKey cfg m h user'
-            print $ JSON.toJSON newkey
-            print "\n"
+            let newsshkeys = sshkeys user' ++ [newkey]
+            let newuser = user' { sshkeys = newsshkeys }
+            let newusers = updateUsers newuser users
+            let newve = updateVaultEntry newusers (head $ filter (\ve -> host ve == h) (vault v))
+            let newv = updateVault newve v
+            encryptVault m (Cfg.file cfg) newv
             uploadSSHKey cfg m h user' newkey
   where
     optsParser :: ParserInfo Opts

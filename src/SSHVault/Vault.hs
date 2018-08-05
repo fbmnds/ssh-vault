@@ -16,6 +16,7 @@ module SSHVault.Vault
     , encryptVault
     , decryptVault
     , getUser
+    , getUsers
     , updateUsers
     , updateVaultEntry
     , updateVault
@@ -95,15 +96,20 @@ getUser :: Vault -> HostName -> UserName -> [User]
 getUser v h u' =
   filter (\ uvh -> user uvh == u') . concatMap users $ filter (\ ve -> host ve == h) (vault v)
 
+getUsers :: Vault -> HostName -> [User]
+getUsers v h = case filter (\ ve -> host ve == h) (vault v) of
+  []   -> []
+  [ve] -> users ve
+  _    -> error $ "vault inconsistent: multiple entries for host " ++ h
 
 updateUsers :: User -> [User] -> [User]
-updateUsers u' us = filter (\u'' -> user u'' == un) us ++ [u'] where un = user u'
+updateUsers u' us = filter (\u'' -> user u'' /= un) us ++ [u'] where un = user u'
 
 updateVaultEntry :: [User] -> VaultEntry -> VaultEntry
 updateVaultEntry us ve = ve { users = us }
 
 updateVault :: VaultEntry -> Vault -> Vault
-updateVault ve v = v { vault = filter (\ve' -> host ve' == hn) (vault v) ++ [ve] } where hn = host ve
+updateVault ve v = v { vault = filter (\ve' -> host ve' /= hn) (vault v) ++ [ve] } where hn = host ve
 
 
 decryptVault :: (ToSBytes a, JSON.FromJSON b) => a -> String -> IO b
