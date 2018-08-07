@@ -31,31 +31,25 @@ data Command
 
 cli :: IO ()
 cli =
-    withFile "/dev/shm/log" AppendMode $ \ hnd -> do
-        hDuplicateTo hnd stderr
-    --do
+    do
+        cfg <- Cfg.genDefaultConfig
         (opts :: Opts) <- execParser optsParser
         case optCommand opts of
-            Insert s' -> do
-                cfg <- Cfg.genDefaultConfig
-                m   <- getKeyPhrase
+            Insert s'         -> do
+                m <- getKeyPhrase
                 WF.insertSSHKey WF.Insert cfg m s'
-            Replace s' -> do
-                cfg <- Cfg.genDefaultConfig
-                m   <- getKeyPhrase
+            Replace s'        -> do
+                m <- getKeyPhrase
                 WF.insertSSHKey WF.Replace cfg m s'
-            Init -> do
-                cfg <- Cfg.genDefaultConfig
-                WF.initVault cfg
-            Print -> do
-                cfg <- Cfg.genDefaultConfig
-                WF.printVault cfg
-            B64Encrypt -> WF.b64EncryptSSHKeyPassphrase
-            SSHAdd h u' -> WF.sshAdd h u'
+            Init              -> WF.initVault cfg
+            Print             -> WF.printVault cfg
+            B64Encrypt        -> WF.b64EncryptSSHKeyPassphrase
+            SSHAdd h u'       -> WF.sshAdd h u'
             RotateSSHKey h u' -> do
-                cfg <- Cfg.genDefaultConfig
-                m   <- getKeyPhrase
-                WF.rotateSSHKey cfg m h u'
+                m <- getKeyPhrase
+                withFile "/dev/shm/log" AppendMode $ \ hnd -> do
+                    hDuplicateTo hnd stderr
+                    WF.rotateSSHKey cfg m h u'
   where
     optsParser :: ParserInfo Opts
     optsParser =

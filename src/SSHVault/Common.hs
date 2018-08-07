@@ -10,6 +10,7 @@ module SSHVault.Common
   , procD
   , shellD
   , execSSH
+  , execExp
   , rand1000
   , randS
   , chmodFile
@@ -149,13 +150,29 @@ chmodDirR m fn = procD ("chmod" :: Tu.Text) ["-R", toText m, toText fn]
 
 execSSH :: ToSBytes a => a -> String -> IO ()
 execSSH ph sp = catch
-    (readCreateProcess (shell $ "bash -c \"" ++ cmd) [] >>= putStrLn)
-    (\(_ :: SomeException) -> print ("could not execute expect script" :: String))
-        where
-            (cmd :: String) = "expect << EOF\n"
-             ++ "spawn " ++ sp ++ "\n"
-             ++ "expect \\\"Enter passphrase\\\"\n"
-             ++ "send \\\"" ++ toString ph ++ "\\r\\\"\n"
-             ++ "expect eof\n"
-             ++ "EOF\""
+    (readCreateProcess (shell cmd) [] >>= putStr)
+    (\ (_ :: SomeException) -> do
+        print ("could not execute expect script" :: String)
+        error "exit")
+    where
+        (cmd :: String) = "bash -c \"expect << EOF\n"
+         ++ "spawn " ++ sp ++ "\n"
+         ++ "expect \\\"Enter passphrase\\\"\n"
+         ++ "send \\\"" ++ toString ph ++ "\\r\\\"\n"
+         ++ "expect eof\n"
+         ++ "EOF\""
 
+execExp :: Cfg.Config -> String -> [String] -> IO ()
+execExp _ exp' ls = do
+        r3 <- rand1000 3
+        let fn = "/dev/shm/" ++ exp' ++ "-" ++ intercalate "-" (map show r3) ++ ".exp"
+        catch ( do
+            _ <- procD "touch" [fn]
+            _ <- chmodFile ("600" :: String) fn
+            _ <- writeFile fn (intercalate "\n" ls)
+            _ <- procD "expect" ["-f", fn]
+            _ <- procD "rm" [fn]
+            return () )
+            (\ (e' :: SomeException) -> procD "rm" [fn] )
+
+    -- TODO procD "expect" ["-f", fn] succeeds, but throws exception

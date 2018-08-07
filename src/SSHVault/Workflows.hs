@@ -73,23 +73,34 @@ rotateSSHKey cfg m h u' = catch (
             newve = updateVaultEntry newusers (head $ filter (\ve -> host ve == h) (vault v))
             newv = updateVault newve v
             u''  = user user'
-            s'   = maximum $ sshkeys user'
-            priv = key_file s'
+            max'   = maximum $ sshkeys user'
+            ph' = B64.decode . toBytes . phrase64 $ max'
+            priv = key_file max'
             npub = key_file newkey ++ ".pub"
             port' = show . port $ host_data newve
-        ph <- getSSHKeyphrase m user'
-        execSSH ph ("ssh -p " ++ port' ++ " -i " ++ priv ++ " " ++ u'' ++ "@" ++ h
-            ++ " 'chmod 644 ~/.ssh/authorized_keys' 2>&1 >/dev/null" :: String)
-        execSSH ph ("bash -c \"cat " ++ npub
-            ++ " | ssh -p " ++ port' ++ " -i " ++ priv ++ " " ++ u'' ++ "@" ++ h
-            ++ " 'cat >> ~/.ssh/authorized_keys' 2>&1 >/dev/null\"" :: String)
+        -- ph <- getSSHKeyphrase m user'
+        ph <- case ph' of
+                        Left _ -> do
+                            print "could not decode SSH key passphrase, probably wrong master password"
+                            error "exit"
+                        Right x' -> decryptAES m x'
+        -- execSSH ph ("ssh -p " ++ port' ++ " -i " ++ priv ++ " " ++ u'' ++ "@" ++ h
+        --     ++ " 'chmod 644 ~/.ssh/authorized_keys'" :: String)
+        -- execSSH ph ("(cat " ++ npub
+        --     ++ " | ssh -p " ++ port' ++ " -i " ++ priv ++ " " ++ u'' ++ "@" ++ h
+        --     ++ " 'cat >> ~/.ssh/authorized_keys')" :: String)
+        execExp cfg "upload-sshkey"
+            [ "spawn bash -c \"cat " ++ npub
+            ++ " | ssh -i " ++ priv ++ " " ++ u'' ++ "@" ++ h
+            ++ " 'cat >> ~/.ssh/authorized_keys'\""
+            , "expect \"Enter passphrase\""
+            , "send \"" ++ toString ph ++ "\\r\""
+            , "expect eof"
+            , ""
+            ]
         encryptVault m (Cfg.file cfg) newv
     )
-    (\(_ :: SomeException) ->
-        print ("could not upload SSH key" :: String)
-    )
-    --where
-
+    (\(_ :: SomeException) -> print ("could not upload SSH key" :: String))
 
 
 genSSHFilename :: Cfg.Config -> HostName -> User -> IO String
@@ -150,9 +161,7 @@ initVault cfg = catch (
             -- procD "chown" [" ", d]
             encryptVault (toSBytes pw) v Vault {vault = []}
     )
-    (\(_ :: SomeException) ->
-        print ("could not initialize vault file" :: String)
-    )
+    (\(_ :: SomeException) -> print ("could not initialize vault file" :: String))
 
 
 printVault :: Cfg.Config -> IO ()
@@ -162,9 +171,7 @@ printVault cfg = catch (
         (v :: Vault) <- decryptVault (toSBytes pw) (file cfg)
         printf (s%"\n") . toText $ encodePretty v
     )
-    (\(_ :: SomeException) ->
-        print ("could not print vault" :: String)
-    )
+    (\(_ :: SomeException) -> print ("could not print vault" :: String))
 
 
 sshAdd :: HostName -> UserName -> IO ()
@@ -193,8 +200,7 @@ sshAdd h u' = catch (
             _ -> do print "vault entry for host inconsistent"; error "exit"
         return ()
     )
-    (\(_ :: SomeException) -> --do
-        printf (s%"\n") . toText $ "failed to ssh-add key for " ++ u' ++ "@" ++ h
+    (\(_ :: SomeException) -> printf (s%"\n") . toText $ "failed to ssh-add key for " ++ u' ++ "@" ++ h)
 {-
         _ <- return $ map
             (\ s' -> when (substring s' (show e')) (printf (s % "\n") (toText s') :: IO ()))
@@ -207,7 +213,7 @@ sshAdd h u' = catch (
         --return ()
         printf (s%"\n") (toText $ show e')
 -}
-    )
+
 
 
 insertSSHKey :: ToSBytes a => InsertMode -> Cfg.Config -> a -> String -> IO ()
@@ -224,15 +230,15 @@ insertSSHKey mode cfg m s' = do
                 let ves = filter (\ve' -> host ve' /= host ve) (vault v)
                 encryptVault
                     (toSBytes m) (Cfg.file cfg) (Vault (ves ++ [ve]))
-            Insert  -> error "failed to insert vault entry (duplicate)"
+            Insert  -> do print "failed to insert vault entry (duplicate)"; error "exit"
 
 
 
 b64EncryptSSHKeyPassphrase :: IO ()
 b64EncryptSSHKeyPassphrase = do
-    putStrLn "1. Masterpassword"
+    putStrLn "1. Vault password"
     m <- getKeyPhrase
-    putStrLn "2. SSH key"
+    putStrLn "2. SSH key passphrase"
     k    <- getLine
     aesk <- encryptAES m $ toBytes k
     let b64aesk = B64.encode $ toBytes aesk
