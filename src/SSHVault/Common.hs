@@ -145,12 +145,12 @@ chmodDirR m fn = procD ("chmod" :: Tu.Text) ["-R", toText m, toText fn]
 
 
 execExp :: Cfg.Config -> String -> [String] -> IO ()
-execExp cfg exp' ls = do
+execExp _ exp' ls = do
   r3 <- rand1000 3
-  let fn = Cfg.dir cfg ++ "/" ++ exp' ++ "-" ++ intercalate "-" (map show r3) ++ ".exp"
+  let fn = "/dev/shm/" ++ exp' ++ "-" ++ intercalate "-" (map show r3) ++ ".exp"
   _ <- procD "touch" [fn]
   _ <- chmodFile ("600" :: String) fn
   _ <- writeFile fn (intercalate "\n" ls)
   _ <- procD "expect" ["-f", fn]
-  _ <- procD "rm" [fn]
+  _ <- procD "shred" ["-u", "-z", fn]
   return ()

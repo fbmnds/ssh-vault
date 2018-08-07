@@ -172,7 +172,7 @@ sshAdd h u' = catch (
                         Left _ -> error "could not decode SSH key passphrase, probably wrong master password"
                         Right x' -> decryptAES m x'
                     execExp cfg exp'
-                            [ "spawn ssh-add -t 60 " ++ fn
+                            [ "spawn ssh-add -t 90 " ++ fn
                             , "expect \"Enter passphrase\""
                             , "send \"" ++ toString ph ++ "\\r\""
                             , "expect eof"
