@@ -1,4 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 --{-# LANGUAGE PackageImports -#}
 module SSHVault.Common
   ( encryptAES
@@ -8,7 +9,7 @@ module SSHVault.Common
   , getKeyPhrase
   , procD
   , shellD
-  , execExp
+  , execSSH
   , rand1000
   , randS
   , chmodFile
@@ -38,9 +39,11 @@ import Data.Time.Clock as Clock
 import qualified Crypto.Simple.CTR as CTR
 import           Crypto.Hash (hash, SHA256 (..), Digest)
 
---import           Control.Exception (bracket_)
+import           Control.Exception (SomeException, catch, bracket, bracket_)
+import           Control.Monad (void)
 import           System.IO
 import           System.Random
+import           System.Process
 
 import qualified Turtle.Prelude as Tu
 import qualified Turtle as Tu
@@ -81,27 +84,27 @@ rand1000 :: Int -> IO [Int]
 rand1000 n = take n . randomRs (0, 999) <$> newStdGen
 
 randS :: Int -> IO String
-randS n = take n . stripChars "$\\\"'{}`" . randomRs (' ','~') <$> newStdGen
+randS n = take n . stripChars ":;<=>?@[\\]^_`" . randomRs ('0','z') <$> newStdGen
 
 
 encryptAES :: ToSBytes a => BA.ScrubbedBytes -> a -> IO BA.ScrubbedBytes
 -- CU.ByteString -> CU.ByteString -> IO CU.ByteString
 encryptAES key msg = do
-  c' <- CTR.encrypt (toBytes key) (toBytes msg)
-  return $ toSBytes c'
+    c' <- CTR.encrypt (toBytes key) (toBytes msg)
+    return $ toSBytes c'
 
 
 decryptAES :: ToSBytes a => BA.ScrubbedBytes -> a -> IO BA.ScrubbedBytes
 -- CU.ByteString -> CU.ByteString -> IO CU.ByteString
 decryptAES key cipher = do
-  c' <- CTR.decrypt (toBytes key) (toBytes cipher)
-  return $ toSBytes c'
+    c' <- CTR.decrypt (toBytes key) (toBytes cipher)
+    return $ toSBytes c'
 
 genSHA256 :: T.Text -> String
 genSHA256 key =
-  let h :: Digest SHA256
-      h = hash $ toBytes key in
-  show h
+    let h :: Digest SHA256
+        h = hash $ toBytes key in
+    show h
 
 genAESKey :: T.Text -> BA.ScrubbedBytes
 genAESKey key = toSBytes . take2nd $ genSHA256 key
@@ -109,15 +112,15 @@ genAESKey key = toSBytes . take2nd $ genSHA256 key
 
 getKeyPhrase :: IO BA.ScrubbedBytes
 getKeyPhrase = do
-  old <- hGetEcho stdin
-  putStr "Vault password: "
-  hFlush stdout
-  hSetEcho stdin False
-  keyPhrase <- getLine
-  putChar '\n'
-  hFlush stdout
-  hSetEcho stdin old
-  return . genAESKey $ toText keyPhrase
+    old <- hGetEcho stdin
+    putStr "Vault password: "
+    hFlush stdout
+    hSetEcho stdin False
+    keyPhrase <- getLine
+    putChar '\n'
+    hFlush stdout
+    hSetEcho stdin old
+    return . genAESKey $ toText keyPhrase
 
 
 procD :: ToSBytes a => a -> [a] -> IO ()
@@ -144,13 +147,15 @@ chmodDirR :: (ToSBytes a, ToSBytes b) => a -> b -> IO ()
 chmodDirR m fn = procD ("chmod" :: Tu.Text) ["-R", toText m, toText fn]
 
 
-execExp :: Cfg.Config -> String -> [String] -> IO ()
-execExp _ exp' ls = do
-  r3 <- rand1000 3
-  let fn = "/dev/shm/" ++ exp' ++ "-" ++ intercalate "-" (map show r3) ++ ".exp"
-  _ <- procD "touch" [fn]
-  _ <- chmodFile ("600" :: String) fn
-  _ <- writeFile fn (intercalate "\n" ls)
-  _ <- procD "expect" ["-f", fn]
-  _ <- procD "shred" ["-u", "-z", fn]
-  return ()
+execSSH :: ToSBytes a => a -> String -> IO ()
+execSSH ph sp = catch
+    (readCreateProcess (shell $ "bash -c \"" ++ cmd) [] >>= putStrLn)
+    (\(_ :: SomeException) -> print ("could not execute expect script" :: String))
+        where
+            (cmd :: String) = "expect << EOF\n"
+             ++ "spawn " ++ sp ++ "\n"
+             ++ "expect \\\"Enter passphrase\\\"\n"
+             ++ "send \\\"" ++ toString ph ++ "\\r\\\"\n"
+             ++ "expect eof\n"
+             ++ "EOF\""
+

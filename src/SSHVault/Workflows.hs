@@ -4,9 +4,10 @@
 {-# LANGUAGE DuplicateRecordFields #-}
 
 module SSHVault.Workflows
-    ( initVault
+    ( InsertMode (..)
+    , initVault
     , printVault
-    , uploadSSHKey
+    , rotateSSHKey
     , genSSHFilename
     , chmodSSHFile
     , genSSHKey
@@ -19,12 +20,11 @@ module SSHVault.Workflows
 
 import SSHVault.Vault
 import SSHVault.Vault.Config as Cfg
---import SSHVault.Vault.Queue
 import SSHVault.SBytes
 import SSHVault.Common
 
 --import Control.Monad.Except
-import Control.Exception (SomeException, catch)
+import Control.Exception (SomeException, catch, bracket_)
 
 import Data.Maybe (fromMaybe)
 --import Data.Text (split)
@@ -35,11 +35,16 @@ import qualified Data.Aeson as JSON
 import Data.Aeson.Encode.Pretty
 import qualified Data.ByteArray as BA
 
---import System.IO
+import System.IO
 
 import qualified Turtle as Tu
 import Turtle.Prelude (testfile)
 import Turtle.Format
+
+
+data InsertMode
+    = Insert
+    | Replace
 
 
 
@@ -52,28 +57,39 @@ getSSHKeyphrase m u' = case B64.decode . toBytes $ phrase64 s' of
 
 
 -- TODO avoid double entries in ~/.ssh/authorized_keys
--- TODO add port parameter
-uploadSSHKey :: Cfg.Config -> BA.ScrubbedBytes -> HostName -> User -> SSHKey -> IO ()
-uploadSSHKey cfg m h u' nkey = catch (
+rotateSSHKey :: Cfg.Config -> BA.ScrubbedBytes -> HostName -> UserName -> IO ()
+rotateSSHKey cfg m h u' = catch (
     do
-        ph <- getSSHKeyphrase m u'
-        execExp cfg "upload-sshkey"
-            [ "spawn bash -c \"cat " ++ npub
-            ++ " | ssh -i " ++ priv ++ " " ++ u'' ++ "@" ++ h
-            ++ " 'cat >> ~/.ssh/authorized_keys'\""
-            , "expect \"Enter passphrase\""
-            , "send \"" ++ toString ph ++ "\\r\""
-            , "expect eof"
-            ]
+        (v :: Vault) <- decryptVault (toSBytes m) (Cfg.file cfg)
+        let users' = getUsers v h
+        user' <- case getUser v h u' of
+            [u''] -> return u''
+            []    -> error $ "missing user " ++ u'
+            _     -> error "vault inconsistent"
+        newkey <- genSSHKey cfg m h user'
+        let newsshkeys = sshkeys user' ++ [newkey]
+            newuser = user' { sshkeys = newsshkeys }
+            newusers = updateUsers newuser users'
+            newve = updateVaultEntry newusers (head $ filter (\ve -> host ve == h) (vault v))
+            newv = updateVault newve v
+            u''  = user user'
+            s'   = maximum $ sshkeys user'
+            priv = key_file s'
+            npub = key_file newkey ++ ".pub"
+            port' = show . port $ host_data newve
+        ph <- getSSHKeyphrase m user'
+        execSSH ph ("ssh -p " ++ port' ++ " -i " ++ priv ++ " " ++ u'' ++ "@" ++ h
+            ++ " 'chmod 644 ~/.ssh/authorized_keys' 2>&1 >/dev/null" :: String)
+        execSSH ph ("bash -c \"cat " ++ npub
+            ++ " | ssh -p " ++ port' ++ " -i " ++ priv ++ " " ++ u'' ++ "@" ++ h
+            ++ " 'cat >> ~/.ssh/authorized_keys' 2>&1 >/dev/null\"" :: String)
+        encryptVault m (Cfg.file cfg) newv
     )
     (\(_ :: SomeException) ->
         print ("could not upload SSH key" :: String)
     )
-    where
-            u''  = user u'
-            s'   = maximum $ sshkeys u'
-            priv = key_file s'
-            npub = key_file nkey ++ ".pub"
+    --where
+
 
 
 genSSHFilename :: Cfg.Config -> HostName -> User -> IO String
@@ -92,7 +108,7 @@ chmodSSHFile = chmodFile ("600" :: String)
 genSSHKey :: Cfg.Config -> BA.ScrubbedBytes -> HostName -> User -> IO SSHKey
 genSSHKey cfg m h u' = do
     printf "[*] generate new SSH key password\n"
-    pw' <- randS 20
+    pw' <- randS 32
     pw'' <- if toBytes m == ""
         then return $ toSBytes pw' -- TODO rewrite test1, remove empty m
         else encryptAES m pw'
@@ -158,27 +174,23 @@ sshAdd h u' = catch (
         m            <- getKeyPhrase
         (v :: Vault) <- decryptVault m (file cfg)
         case filter (\ve -> h == host ve) $ vault v of
-            []   -> error "host not found"
+            []   -> do print "host not found"; error "exit"
             [ve] -> case filter (\u'' -> u' == user u'') (users ve) of
-                []   -> error "user not found"
+                []   -> do print "user not found"; error "exit"
                 [u''] -> do
-                    let (max, ph', fn, exp') =
+                    let (max', ph', fn) =
                             ( maximum $ sshkeys u''
-                            , B64.decode . toBytes . phrase64 $ max
-                            , key_file max
-                            , "ssh-add"
+                            , B64.decode . toBytes . phrase64 $ max'
+                            , key_file max'
                             )
                     ph <- case ph' of
-                        Left _ -> error "could not decode SSH key passphrase, probably wrong master password"
+                        Left _ -> do
+                            print "could not decode SSH key passphrase, probably wrong master password"
+                            error "exit"
                         Right x' -> decryptAES m x'
-                    execExp cfg exp'
-                            [ "spawn ssh-add -t 90 " ++ fn
-                            , "expect \"Enter passphrase\""
-                            , "send \"" ++ toString ph ++ "\\r\""
-                            , "expect eof"
-                            ]
-
-            _ -> error "vault entry for host inconsistent"
+                    execSSH ph ("ssh-add -t 90 " ++ fn :: String)
+                _ -> do print "vault entry for user inconsistent"; error "exit"
+            _ -> do print "vault entry for host inconsistent"; error "exit"
         return ()
     )
     (\(_ :: SomeException) -> --do
@@ -198,16 +210,22 @@ sshAdd h u' = catch (
     )
 
 
-insertSSHKey :: ToSBytes a => Cfg.Config -> a -> String -> IO ()
-insertSSHKey cfg m s' = do
+insertSSHKey :: ToSBytes a => InsertMode -> Cfg.Config -> a -> String -> IO ()
+insertSSHKey mode cfg m s' = do
     (v :: Vault)       <- decryptVault m (Cfg.file cfg)
     (ve :: VaultEntry) <- return
         . fromMaybe (error "failed to JSON.decode the given input")
         . JSON.decode $ toLUBytes s'
-    case filter (\h -> h == host ve) $ fmap host (vault v) of
-        [] -> encryptVault
+    case filter (\ve' -> host ve' == host ve) (vault v) of
+        []  -> encryptVault
                 (toSBytes m) (Cfg.file cfg) (Vault (vault v ++ [ve]))
-        _  -> print $ "failed to insert host " ++ host ve ++ ": already in vault"
+        _ -> case mode of
+            Replace -> do
+                let ves = filter (\ve' -> host ve' /= host ve) (vault v)
+                encryptVault
+                    (toSBytes m) (Cfg.file cfg) (Vault (ves ++ [ve]))
+            Insert  -> error "failed to insert vault entry (duplicate)"
+
 
 
 b64EncryptSSHKeyPassphrase :: IO ()

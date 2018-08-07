@@ -3,18 +3,15 @@
 module SSHVault.CLI (cli)
     where
 
+import SSHVault.Common
+import qualified SSHVault.Vault.Config as Cfg
+import qualified SSHVault.Workflows as WF
+
 import Data.Semigroup ((<>))
 import Options.Applicative
-
-import SSHVault.Common
-import SSHVault.Vault
-import qualified SSHVault.Vault.Config as Cfg
-import SSHVault.Workflows
-import SSHVault.SBytes
-
-import qualified Data.Aeson as JSON
-
-
+import GHC.IO.Handle
+import System.IO
+import Control.Exception
 
 data Opts = Opts
     {   optVerbose :: !Bool
@@ -23,45 +20,42 @@ data Opts = Opts
 
 data Command
     = Insert String
+    | Replace String
     | Init
     | Print
     | B64Encrypt
     | SSHAdd String String
-    | UploadSSHKey String String
+    | RotateSSHKey String String
+
+
 
 cli :: IO ()
-cli = do
-    (opts :: Opts) <- execParser optsParser
-    case optCommand opts of
-        Insert s' -> do
-            cfg <- Cfg.genDefaultConfig
-            m   <- getKeyPhrase
-            insertSSHKey cfg m s'
-        Init -> do
-            cfg <- Cfg.genDefaultConfig
-            initVault cfg
-        Print -> do
-            cfg <- Cfg.genDefaultConfig
-            printVault cfg
-        B64Encrypt -> b64EncryptSSHKeyPassphrase
-        SSHAdd h u' -> sshAdd h u'
-        UploadSSHKey h u' -> do
-            cfg <- Cfg.genDefaultConfig
-            m   <- getKeyPhrase
-            (v :: Vault) <- decryptVault (toSBytes m) (Cfg.file cfg)
-            let users = getUsers v h
-            user' <- case getUser v h u' of
-                [u''] -> return u''
-                []    -> error $ "missing user " ++ u'
-                _     -> error "vault inconsistent"
-            newkey <- genSSHKey cfg m h user'
-            let newsshkeys = sshkeys user' ++ [newkey]
-            let newuser = user' { sshkeys = newsshkeys }
-            let newusers = updateUsers newuser users
-            let newve = updateVaultEntry newusers (head $ filter (\ve -> host ve == h) (vault v))
-            let newv = updateVault newve v
-            encryptVault m (Cfg.file cfg) newv
-            uploadSSHKey cfg m h user' newkey
+cli =
+    withFile "/dev/shm/log" AppendMode $ \ hnd -> do
+        hDuplicateTo hnd stderr
+    --do
+        (opts :: Opts) <- execParser optsParser
+        case optCommand opts of
+            Insert s' -> do
+                cfg <- Cfg.genDefaultConfig
+                m   <- getKeyPhrase
+                WF.insertSSHKey WF.Insert cfg m s'
+            Replace s' -> do
+                cfg <- Cfg.genDefaultConfig
+                m   <- getKeyPhrase
+                WF.insertSSHKey WF.Replace cfg m s'
+            Init -> do
+                cfg <- Cfg.genDefaultConfig
+                WF.initVault cfg
+            Print -> do
+                cfg <- Cfg.genDefaultConfig
+                WF.printVault cfg
+            B64Encrypt -> WF.b64EncryptSSHKeyPassphrase
+            SSHAdd h u' -> WF.sshAdd h u'
+            RotateSSHKey h u' -> do
+                cfg <- Cfg.genDefaultConfig
+                m   <- getKeyPhrase
+                WF.rotateSSHKey cfg m h u'
   where
     optsParser :: ParserInfo Opts
     optsParser =
@@ -78,11 +72,12 @@ cli = do
     programOptions =
         Opts <$> switch (long "verbose" <> short 'v' <> help "Toggle verbosity") <*>
         hsubparser (  insertCommand
+                   <> replaceCommand
                    <> initCommand
                    <> printCommand
                    <> b64encryptCommand
                    <> sshaddCommand
-                   <> uploadSSHKeyCommand)
+                   <> rotateSSHKeyCommand)
 
     insertCommand :: Mod CommandFields Command
     insertCommand =
@@ -91,8 +86,19 @@ cli = do
             (info insertOptions (progDesc "Insert a vault entry"))
     insertOptions :: Parser Command
     insertOptions =
-        Insert <$>
+        SSHVault.CLI.Insert <$>
         strArgument (metavar "VAULTENTRY" <> help "JSON formatted vault entry to insert")
+
+    replaceCommand :: Mod CommandFields Command
+    replaceCommand =
+        command
+            "replace"
+            (info replaceOptions (progDesc "replace a vault entry"))
+    replaceOptions :: Parser Command
+    replaceOptions =
+        Replace <$>
+        strArgument (metavar "VAULTENTRY" <> help "JSON formatted vault entry for replacement")
+
 
     initCommand :: Mod CommandFields Command
     initCommand =
@@ -123,13 +129,13 @@ cli = do
         strArgument (metavar "HOST" <> help "Target host for SSH key activation") <*>
         strArgument (metavar "USER" <> help "Target user for SSH key activation")
 
-    uploadSSHKeyCommand :: Mod CommandFields Command
-    uploadSSHKeyCommand =
+    rotateSSHKeyCommand :: Mod CommandFields Command
+    rotateSSHKeyCommand =
         command
-            "upload-sshkey"
-            (info uploadSSHKeyOptions (progDesc "Upload SSH key for user@host"))
-    uploadSSHKeyOptions :: Parser Command
-    uploadSSHKeyOptions =
-        UploadSSHKey <$>
-        strArgument (metavar "HOST" <> help "Target host for SSH key upload") <*>
-        strArgument (metavar "USER" <> help "Target user for SSH key upload")
+            "rotate-sshkey"
+            (info rotateSSHKeyOptions (progDesc "Generate and upload new SSH key for user@host"))
+    rotateSSHKeyOptions :: Parser Command
+    rotateSSHKeyOptions =
+        RotateSSHKey <$>
+        strArgument (metavar "HOST" <> help "Target host for SSH key rotation") <*>
+        strArgument (metavar "USER" <> help "Target user for SSH key rotation")
