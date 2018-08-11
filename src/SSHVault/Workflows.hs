@@ -231,7 +231,9 @@ insertSSHKey mode cfg m s' = do
                 let ves = filter (\ve' -> host ve' /= host ve) (vault v)
                 encryptVault
                     (toSBytes m) (Cfg.file cfg) (Vault (ves ++ [ve]))
-            Insert  -> do print "failed to insert vault entry (duplicate)"; error "exit"
+            Insert  -> do
+                putStrLn "failed to insert vault entry (duplicate)"
+                error "exit"
 
 
 

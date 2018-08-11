@@ -47,6 +47,7 @@ library
         time -any,
         process -any
 
+
 executable ssh-vault
     main-is: Main.hs
     hs-source-dirs: . src . src
@@ -122,4 +123,5 @@ test-suite ssh-vault-tests
         base64-bytestring -any,
         optparse-applicative -any,
         time -any,
-        process -any
+        process -any,
+        containers -any

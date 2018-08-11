@@ -17,8 +17,8 @@ import qualified Data.Text as T
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Base64 as B64
 import qualified Data.ByteArray as BA
-
-import Data.List (intercalate)
+import Data.Set
+import Data.Text (splitOn)
 import Data.Maybe (fromMaybe)
 import Data.Aeson
 import GHC.Generics
@@ -26,9 +26,10 @@ import GHC.Generics
 import Test.QuickCheck
 
 import Control.Exception (SomeException, catch)
+import Control.Monad
 import System.Exit (ExitCode(..))
 import qualified Turtle as Tu
-import qualified Turtle.Prelude as Tu
+--import qualified Turtle.Prelude as Tu
 import Turtle.Format
 
 instance Arbitrary B.ByteString where arbitrary = B.pack <$> arbitrary
@@ -54,7 +55,7 @@ checkVaultJSON = do
         fromMaybe
           (error "checkVaultJSON: failed to parse Vault decode $ encode\n")
           . decode $ toLUBytes vsc
-  printf s "+++ OK, passed vault JSON decode test.\n"
+  putStrLn "+++ OK, passed vault JSON decode test."
   return v
 
 getHosts :: V.Vault -> [String]
@@ -62,7 +63,7 @@ getHosts = fmap V.host . V.vault
 
 testGetHost :: V.Vault -> IO ()
 testGetHost v = case getHosts v of
-  ["box1","box2","box3"] -> printf s "+++ OK, passed getHost test.\n"
+  ["box1","box2","box3"] -> putStrLn "+++ OK, passed getHost test."
   _                      -> error "--- ERR, failed getHost test.\n"
 
 test0 :: IO ()
@@ -112,7 +113,7 @@ test1 dcfg = do
   printf s "+++ OK, passed genSSHKey test.\n"
 
   V.encryptVault (toSBytes $ genAESKey vk) fn v1
-  printf s "[*] encryptVault\n"
+  putStrLn "[*] encryptVault"
   v2 <- V.decryptVault (toSBytes $ genAESKey vk) fn
   if v1 == v2 then printf s "+++ OK, passed decryptVault test.\n" else
     printf s "-- ERR, failed decryptVault test.\n"
@@ -121,7 +122,6 @@ test1 dcfg = do
 
 writeSSHKey :: BA.ScrubbedBytes -> V.SSHKey -> IO ExitCode
 writeSSHKey m sk = catch (do
-  putStrLn $ "LOG: writeSSHKey sk " ++ (show sk)
   let priv = V.key_file sk
       pub  = priv ++ ".pub"
   ph <- case B64.decode . toBytes $ V.phrase64 sk of
@@ -131,38 +131,24 @@ writeSSHKey m sk = catch (do
         return $ toString ph'
   B.writeFile priv (toBytes $ V.key_content sk)
   chmodFile ("600" :: String) (priv :: String)
-  procEC $ "ssh-keygen -f " ++ priv ++ " -y -P " ++ ph ++ " > " ++ pub
+  _ <- procEC $ "ssh-keygen -f " ++ priv ++ " -y -P " ++ ph ++ " > " ++ pub
   chmodFile ("644" :: String) (pub :: String)
   return ExitSuccess
   )
   (\(e' :: SomeException) -> do
-    putStrLn $ "LOG: could not write SSH key:\n" ++ show e'
+    putStrLn $ "LOG: could not write SSH key:" ++ V.key_file sk ++ "(.pub)\n" ++ show e'
     return (ExitFailure 1))
 
 
---writeUserSSHKeys :: BA.ScrubbedBytes -> V.Vault -> V.HostName -> V.UserName -> IO ([FilePath],[FilePath])
+writeUserSSHKeys :: BA.ScrubbedBytes -> V.Vault -> V.HostName -> V.UserName -> IO ([V.SSHKey], [String], [String])
 writeUserSSHKeys m v h un = do
-  let sks = concat . fmap V.sshkeys $ V.getUser v h un
-  mapM_ (\ sk -> do
-            r <- writeSSHKey m sk
-            case r of
-              ExitSuccess -> putStrLn "ok"
-              _           -> putStrLn "fail") sks
-  --putStrLn  ("LOG : # SSH keys = " ++ (show $ length x'))
-  {-
-  r0 <- foldl (\ acc sk -> do
-    r <- writeSSHKey m sk
-    case r of
-      ExitSuccess -> do
-        f <- fst acc
-        s <- snd acc
-        return (f ++ [V.key_file sk],s)
-      (ExitFailure _)-> do
-        f <- fst acc
-        s <- snd acc
-        return (f,s ++ [V.key_file sk])) IO (IO [],IO []) sks
-  return r0
--}
+  let sks = concatMap V.sshkeys $ V.getUser v h un
+  rs <- mapM (\sk -> do ec <-  writeSSHKey m sk; return (V.key_file sk,ec)) sks
+  rs' <- foldM (\ acc (fn,ec) -> case ec of
+    ExitSuccess -> return (fst acc ++ [fn], snd acc)
+    _           -> return (fst acc, snd acc ++ [fn])) ([],[]) rs
+  return (sks, fst rs', snd rs')
+
 
 test2 :: IO ()
 test2 = do
@@ -180,21 +166,21 @@ test2 = do
       [u''] -> return u''
       []    -> error $ "missing user " ++ un
       _     -> error "vault inconsistent"
-  writeUserSSHKeys m v h un
-  --putStrLn . show $ length x'
-  {-
+  (sks, _,errs) <- writeUserSSHKeys m v h un
+  mapM_ (\ err -> putStrLn $ "LOG: could not write " ++ err) errs
   sshAdd (cfg { Cfg.ttl = 1 }) m h un
   r <- procEC cmd
-  case r of
+  a_k <- case r of
       (ExitFailure _, o', e') -> do
         putStrLn $ "LOG :" ++ show e'
-        putStrLn $ "LOG :" ++ show o'
-        error "failed to ssh"
+        unless (Prelude.null o') $ putStrLn $ "LOG :" ++ show o'
+        error "failed to retrieve authorized_keys"
       (ExitSuccess  , o', e') -> do
-        putStrLn $ "LOG :" ++ show e'
-        putStrLn o'
-        --return o'
--}
+        unless (Prelude.null e') $ putStrLn $ "LOG :" ++ show e'
+        return o'
+  pub_content <- mapM (\ sk -> B.readFile $ V.key_file sk ++ ".pub") sks
+  putStrLn "diff between vault and authorized keys:"
+  print $ intersection (fromList pub_content) (fromList $ fmap toBytes (splitOn "\n" (toText a_k)))
 
 
 prop_scrubbedbytes :: B.ByteString -> Property
