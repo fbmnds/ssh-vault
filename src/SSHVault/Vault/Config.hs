@@ -15,9 +15,10 @@ import           Turtle.Format
 
 
 data Config =
-  Config { dir :: String
-         , file :: String
+  Config { dir      :: String
+         , file     :: String
          , keystore :: String
+         , ttl      :: Int
     } deriving (Show, Generic, Eq)
 instance JSON.FromJSON Config
 instance JSON.ToJSON Config
@@ -32,4 +33,5 @@ genDefaultConfig = do
         dir = toString (format fp hdir) ++ "/.vault"
       , file = toString (format fp hdir) ++ "/.vault/vault"
       , keystore = toString (format fp hdir) ++ "/.vault/STORE"
+      , ttl = 90
       }

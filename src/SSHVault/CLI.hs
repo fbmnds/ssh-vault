@@ -44,7 +44,9 @@ cli =
             Init              -> WF.initVault cfg
             Print             -> WF.printVault cfg
             B64Encrypt        -> WF.b64EncryptSSHKeyPassphrase
-            SSHAdd h u'       -> WF.sshAdd h u'
+            SSHAdd h u'       -> do
+                m <- getKeyPhrase
+                WF.sshAdd cfg m h u'
             RotateSSHKey h u' -> do
                 m <- getKeyPhrase
                 withFile "/dev/shm/log" AppendMode $ \ hnd -> do

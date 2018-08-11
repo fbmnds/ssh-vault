@@ -7,6 +7,7 @@ module SSHVault.Common
   , genAESKey
   , genSHA256
   , getKeyPhrase
+  , procEC
   , procD
   , shellD
   , execSSH
@@ -45,6 +46,7 @@ import           Control.Monad (void)
 import           System.IO
 import           System.Random
 import           System.Process
+import           System.Exit (ExitCode(..))
 
 import qualified Turtle.Prelude as Tu
 import qualified Turtle as Tu
@@ -124,6 +126,9 @@ getKeyPhrase = do
     return . genAESKey $ toText keyPhrase
 
 
+procEC :: String -> IO (ExitCode, String, String)
+procEC cmd = readCreateProcessWithExitCode (shell cmd) []
+
 procD :: ToSBytes a => a -> [a] -> IO ()
 procD a b = do
     ec <- Tu.proc (toText a) (map toText b) Tu.empty
@@ -162,6 +167,7 @@ execSSH ph sp = catch
          ++ "expect eof\n"
          ++ "EOF\""
 
+
 execExp :: Cfg.Config -> String -> [String] -> IO ()
 execExp _ exp' ls = do
         r3 <- rand1000 3
@@ -173,6 +179,6 @@ execExp _ exp' ls = do
             _ <- procD "expect" ["-f", fn]
             _ <- procD "rm" [fn]
             return () )
-            (\ (e' :: SomeException) -> procD "rm" [fn] )
+            (\ (_ :: SomeException) -> procD "rm" [fn] )
 
     -- TODO procD "expect" ["-f", fn] succeeds, but throws exception

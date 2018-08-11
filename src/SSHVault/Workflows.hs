@@ -36,6 +36,7 @@ import Data.Aeson.Encode.Pretty
 import qualified Data.ByteArray as BA
 
 import System.IO
+import System.Exit (ExitCode(..))
 
 import qualified Turtle as Tu
 import Turtle.Prelude (testfile)
@@ -48,57 +49,44 @@ data InsertMode
 
 
 
-getSSHKeyphrase :: BA.ScrubbedBytes -> User -> IO BA.ScrubbedBytes
-getSSHKeyphrase m u' = case B64.decode . toBytes $ phrase64 s' of
+getSSHKeyphrase :: BA.ScrubbedBytes -> User -> IO (BA.ScrubbedBytes, String)
+getSSHKeyphrase m u' = case B64.decode . toBytes $ phrase64 max' of
     Left _   -> error "failed to b64decode SSH key passphrase"
-    Right s0 -> decryptAES m s0
+    Right s0 -> do
+        ph <- decryptAES m s0
+        return (ph, key_file max')
     where
-        s' = maximum $ sshkeys u'
+        max' = maximum $ sshkeys u'
 
 
 -- TODO avoid double entries in ~/.ssh/authorized_keys
 rotateSSHKey :: Cfg.Config -> BA.ScrubbedBytes -> HostName -> UserName -> IO ()
-rotateSSHKey cfg m h u' = catch (
+rotateSSHKey cfg m h un = catch (
     do
         (v :: Vault) <- decryptVault (toSBytes m) (Cfg.file cfg)
         let users' = getUsers v h
-        user' <- case getUser v h u' of
+        user' <- case getUser v h un of
             [u''] -> return u''
-            []    -> error $ "missing user " ++ u'
-            _     -> error "vault inconsistent"
+            _     -> error $ "missing user " ++ un
         newkey <- genSSHKey cfg m h user'
         let newsshkeys = sshkeys user' ++ [newkey]
-            newuser = user' { sshkeys = newsshkeys }
-            newusers = updateUsers newuser users'
-            newve = updateVaultEntry newusers (head $ filter (\ve -> host ve == h) (vault v))
-            newv = updateVault newve v
-            u''  = user user'
-            max'   = maximum $ sshkeys user'
-            ph' = B64.decode . toBytes . phrase64 $ max'
-            priv = key_file max'
-            npub = key_file newkey ++ ".pub"
-            port' = show . port $ host_data newve
-        -- ph <- getSSHKeyphrase m user'
-        ph <- case ph' of
-                        Left _ -> do
-                            print "could not decode SSH key passphrase, probably wrong master password"
-                            error "exit"
-                        Right x' -> decryptAES m x'
-        -- execSSH ph ("ssh -p " ++ port' ++ " -i " ++ priv ++ " " ++ u'' ++ "@" ++ h
-        --     ++ " 'chmod 644 ~/.ssh/authorized_keys'" :: String)
-        -- execSSH ph ("(cat " ++ npub
-        --     ++ " | ssh -p " ++ port' ++ " -i " ++ priv ++ " " ++ u'' ++ "@" ++ h
-        --     ++ " 'cat >> ~/.ssh/authorized_keys')" :: String)
-        execExp cfg "upload-sshkey"
-            [ "spawn bash -c \"cat " ++ npub
-            ++ " | ssh -i " ++ priv ++ " " ++ u'' ++ "@" ++ h
-            ++ " 'cat >> ~/.ssh/authorized_keys'\""
-            , "expect \"Enter passphrase\""
-            , "send \"" ++ toString ph ++ "\\r\""
-            , "expect eof"
-            , ""
-            ]
-        encryptVault m (Cfg.file cfg) newv
+            newusers   = updateUsers users' $ user' { sshkeys = newsshkeys }
+            newve      = updateVaultEntry newusers (head $ filter (\ve -> host ve == h) (vault v))
+            newv       = updateVault newve v
+            npub       = key_file newkey ++ ".pub"
+            port'      = show . port $ host_data newve
+            cmd'       = "cat " ++ npub ++ " | ssh -p " ++ port' ++ " " ++ un ++ "@" ++ h ++ " 'cat >> ~/.ssh/authorized_keys'"
+            cmd        = "cat " ++ npub ++ " | ssh " ++ " " ++ un ++ "@" ++ h ++ " 'cat >> ~/.ssh/authorized_keys'"
+        putStrLn $ "LOG : " ++ cmd'
+        sshAdd cfg m h un
+        r <- procEC cmd
+        case r of
+            (ExitFailure _, o',  e') -> do
+                putStrLn $ "LOG : " ++ o' ++ "\n" ++ e'
+                error "failed to ssh"
+            (ExitSuccess  , o', e') -> do
+                putStrLn $ "LOG : " ++ show e'
+                encryptVault m (Cfg.file cfg) newv
     )
     (\(_ :: SomeException) -> print ("could not upload SSH key" :: String))
 
@@ -174,11 +162,9 @@ printVault cfg = catch (
     (\(_ :: SomeException) -> print ("could not print vault" :: String))
 
 
-sshAdd :: HostName -> UserName -> IO ()
-sshAdd h u' = catch (
+sshAdd :: ToSBytes a => Cfg.Config -> a -> HostName -> UserName -> IO ()
+sshAdd cfg m h u' = catch (
     do
-        cfg          <- genDefaultConfig
-        m            <- getKeyPhrase
         (v :: Vault) <- decryptVault m (file cfg)
         case filter (\ve -> h == host ve) $ vault v of
             []   -> do print "host not found"; error "exit"
@@ -194,7 +180,7 @@ sshAdd h u' = catch (
                         Left _ -> do
                             print "could not decode SSH key passphrase, probably wrong master password"
                             error "exit"
-                        Right x' -> decryptAES m x'
+                        Right x' -> decryptAES (toSBytes m) x'
                     execSSH ph ("ssh-add -t 90 " ++ fn :: String)
                 _ -> do print "vault entry for user inconsistent"; error "exit"
             _ -> do print "vault entry for host inconsistent"; error "exit"

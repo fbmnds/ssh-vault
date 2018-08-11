@@ -93,8 +93,10 @@ instance JSON.ToJSON Vault
 
 
 getUser :: Vault -> HostName -> UserName -> [User]
-getUser v h u' =
-  filter (\ uvh -> user uvh == u') . concatMap users $ filter (\ ve -> host ve == h) (vault v)
+getUser v h un = case filter (\ uvh -> user uvh == un) . concatMap users $ filter (\ ve -> host ve == h) (vault v) of
+  []   -> []
+  [u'] -> [u']
+  _    -> error $ "vault inconsistent: multiple entries for user " ++ un
 
 getUsers :: Vault -> HostName -> [User]
 getUsers v h = case filter (\ ve -> host ve == h) (vault v) of
@@ -102,8 +104,8 @@ getUsers v h = case filter (\ ve -> host ve == h) (vault v) of
   [ve] -> users ve
   _    -> error $ "vault inconsistent: multiple entries for host " ++ h
 
-updateUsers :: User -> [User] -> [User]
-updateUsers u' us = filter (\u'' -> user u'' /= un) us ++ [u'] where un = user u'
+updateUsers :: [User] -> User -> [User]
+updateUsers us u' = filter (\u'' -> user u'' /= un) us ++ [u'] where un = user u'
 
 updateVaultEntry :: [User] -> VaultEntry -> VaultEntry
 updateVaultEntry us ve = ve { users = us }
