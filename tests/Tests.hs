@@ -25,6 +25,7 @@ import GHC.Generics
 
 import Test.QuickCheck
 
+import Control.Exception (SomeException, catch)
 import System.Exit (ExitCode(..))
 import qualified Turtle as Tu
 import qualified Turtle.Prelude as Tu
@@ -118,6 +119,51 @@ test1 dcfg = do
 
 
 
+writeSSHKey :: BA.ScrubbedBytes -> V.SSHKey -> IO ExitCode
+writeSSHKey m sk = catch (do
+  putStrLn $ "LOG: writeSSHKey sk " ++ (show sk)
+  let priv = V.key_file sk
+      pub  = priv ++ ".pub"
+  ph <- case B64.decode . toBytes $ V.phrase64 sk of
+    Left _   -> error "failed to b64decode SSH key passphrase"
+    Right s0 -> do
+        ph' <- decryptAES m s0
+        return $ toString ph'
+  B.writeFile priv (toBytes $ V.key_content sk)
+  chmodFile ("600" :: String) (priv :: String)
+  procEC $ "ssh-keygen -f " ++ priv ++ " -y -P " ++ ph ++ " > " ++ pub
+  chmodFile ("644" :: String) (pub :: String)
+  return ExitSuccess
+  )
+  (\(e' :: SomeException) -> do
+    putStrLn $ "LOG: could not write SSH key:\n" ++ show e'
+    return (ExitFailure 1))
+
+
+--writeUserSSHKeys :: BA.ScrubbedBytes -> V.Vault -> V.HostName -> V.UserName -> IO ([FilePath],[FilePath])
+writeUserSSHKeys m v h un = do
+  let sks = concat . fmap V.sshkeys $ V.getUser v h un
+  mapM_ (\ sk -> do
+            r <- writeSSHKey m sk
+            case r of
+              ExitSuccess -> putStrLn "ok"
+              _           -> putStrLn "fail") sks
+  --putStrLn  ("LOG : # SSH keys = " ++ (show $ length x'))
+  {-
+  r0 <- foldl (\ acc sk -> do
+    r <- writeSSHKey m sk
+    case r of
+      ExitSuccess -> do
+        f <- fst acc
+        s <- snd acc
+        return (f ++ [V.key_file sk],s)
+      (ExitFailure _)-> do
+        f <- fst acc
+        s <- snd acc
+        return (f,s ++ [V.key_file sk])) IO (IO [],IO []) sks
+  return r0
+-}
+
 test2 :: IO ()
 test2 = do
   cfg <- Cfg.genDefaultConfig
@@ -134,10 +180,12 @@ test2 = do
       [u''] -> return u''
       []    -> error $ "missing user " ++ un
       _     -> error "vault inconsistent"
-
+  writeUserSSHKeys m v h un
+  --putStrLn . show $ length x'
+  {-
   sshAdd (cfg { Cfg.ttl = 1 }) m h un
   r <- procEC cmd
-  _ <- case r of
+  case r of
       (ExitFailure _, o', e') -> do
         putStrLn $ "LOG :" ++ show e'
         putStrLn $ "LOG :" ++ show o'
@@ -145,8 +193,8 @@ test2 = do
       (ExitSuccess  , o', e') -> do
         putStrLn $ "LOG :" ++ show e'
         putStrLn o'
-        return o'
-  return ()
+        --return o'
+-}
 
 
 prop_scrubbedbytes :: B.ByteString -> Property
@@ -173,7 +221,7 @@ main :: IO ()
 main = do
   test2
   test0
-  dcfg <- genTestConfig
-  test1 dcfg
+  --dcfg <- genTestConfig
+  --test1 dcfg
   quickCheck prop_scrubbedbytes
-  shellD $ "rm " ++ Cfg.keystore dcfg ++ "/*"
+  --shellD $ "rm " ++ Cfg.keystore dcfg ++ "/*"

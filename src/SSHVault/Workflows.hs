@@ -7,7 +7,7 @@ module SSHVault.Workflows
     ( InsertMode (..)
     , initVault
     , printVault
-    , rotateSSHKey
+    , rotateUserSSHKey
     , genSSHFilename
     , chmodSSHFile
     , genSSHKey
@@ -29,7 +29,7 @@ import Control.Exception (SomeException, catch, bracket_)
 import Data.Maybe (fromMaybe)
 --import Data.Text (split)
 --import Data.List (intercalate)
---import qualified Data.ByteString.Lazy as BL
+import qualified Data.ByteString as B
 import qualified Data.ByteString.Base64 as B64
 import qualified Data.Aeson as JSON
 import Data.Aeson.Encode.Pretty
@@ -59,9 +59,25 @@ getSSHKeyphrase m u' = case B64.decode . toBytes $ phrase64 max' of
         max' = maximum $ sshkeys u'
 
 
+{-
+restoreUserSSHKey :: Cfg.Config -> BA.ScrubbedBytes -> HostName -> UserName -> IO ()
+restoreUserSSHKey cfg m h un = catch (
+    do
+        (v :: Vault) <- decryptVault (toSBytes m) (Cfg.file cfg)
+        let users' = getUsers v h
+        user' <- case getUser v h un of
+            [u''] -> return u''
+            _     -> error $ "missing user " ++ un
+        let fns = fmap key_file (sshkeys user')
+        _ <- map (\ fn -> B.writeFile fn) fns
+        return ()
+    )
+    (\(_ :: SomeException) -> putStrLn "could not rotate SSH key")
+-}
+
 -- TODO avoid double entries in ~/.ssh/authorized_keys
-rotateSSHKey :: Cfg.Config -> BA.ScrubbedBytes -> HostName -> UserName -> IO ()
-rotateSSHKey cfg m h un = catch (
+rotateUserSSHKey :: Cfg.Config -> BA.ScrubbedBytes -> HostName -> UserName -> IO ()
+rotateUserSSHKey cfg m h un = catch (
     do
         (v :: Vault) <- decryptVault (toSBytes m) (Cfg.file cfg)
         let users' = getUsers v h
@@ -71,13 +87,12 @@ rotateSSHKey cfg m h un = catch (
         newkey <- genSSHKey cfg m h user'
         let newsshkeys = sshkeys user' ++ [newkey]
             newusers   = updateUsers users' $ user' { sshkeys = newsshkeys }
-            newve      = updateVaultEntry newusers (head $ filter (\ve -> host ve == h) (vault v))
-            newv       = updateVault newve v
+            newve      = updateVaultEntry (head $ filter (\ve -> host ve == h) (vault v)) newusers
+            newv       = updateVault v newve
             npub       = key_file newkey ++ ".pub"
             port'      = show . port $ host_data newve
-            cmd'       = "cat " ++ npub ++ " | ssh -p " ++ port' ++ " " ++ un ++ "@" ++ h ++ " 'cat >> ~/.ssh/authorized_keys'"
-            cmd        = "cat " ++ npub ++ " | ssh " ++ " " ++ un ++ "@" ++ h ++ " 'cat >> ~/.ssh/authorized_keys'"
-        putStrLn $ "LOG : " ++ cmd'
+            cmd        = "cat " ++ npub ++ " | ssh -p " ++ port' ++ " " ++ un ++ "@" ++ h
+                                        ++ " 'cat >> ~/.ssh/authorized_keys'"
         sshAdd cfg m h un
         r <- procEC cmd
         case r of
@@ -88,7 +103,7 @@ rotateSSHKey cfg m h un = catch (
                 putStrLn $ "LOG : " ++ show e'
                 encryptVault m (Cfg.file cfg) newv
     )
-    (\(_ :: SomeException) -> print ("could not upload SSH key" :: String))
+    (\(_ :: SomeException) -> putStrLn "could not rotate SSH key")
 
 
 genSSHFilename :: Cfg.Config -> HostName -> User -> IO String

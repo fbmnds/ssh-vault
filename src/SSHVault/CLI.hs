@@ -25,7 +25,7 @@ data Command
     | Print
     | B64Encrypt
     | SSHAdd String String
-    | RotateSSHKey String String
+    | RotateUserSSHKey String String
 
 
 
@@ -47,11 +47,11 @@ cli =
             SSHAdd h u'       -> do
                 m <- getKeyPhrase
                 WF.sshAdd cfg m h u'
-            RotateSSHKey h u' -> do
+            RotateUserSSHKey h u' -> do
                 m <- getKeyPhrase
                 withFile "/dev/shm/log" AppendMode $ \ hnd -> do
                     hDuplicateTo hnd stderr
-                    WF.rotateSSHKey cfg m h u'
+                    WF.rotateUserSSHKey cfg m h u'
   where
     optsParser :: ParserInfo Opts
     optsParser =
@@ -73,7 +73,7 @@ cli =
                    <> printCommand
                    <> b64encryptCommand
                    <> sshaddCommand
-                   <> rotateSSHKeyCommand)
+                   <> rotateUserSSHKeyCommand)
 
     insertCommand :: Mod CommandFields Command
     insertCommand =
@@ -125,13 +125,13 @@ cli =
         strArgument (metavar "HOST" <> help "Target host for SSH key activation") <*>
         strArgument (metavar "USER" <> help "Target user for SSH key activation")
 
-    rotateSSHKeyCommand :: Mod CommandFields Command
-    rotateSSHKeyCommand =
+    rotateUserSSHKeyCommand :: Mod CommandFields Command
+    rotateUserSSHKeyCommand =
         command
-            "rotate-sshkey"
-            (info rotateSSHKeyOptions (progDesc "Generate and upload new SSH key for user@host"))
-    rotateSSHKeyOptions :: Parser Command
-    rotateSSHKeyOptions =
-        RotateSSHKey <$>
-        strArgument (metavar "HOST" <> help "Target host for SSH key rotation") <*>
-        strArgument (metavar "USER" <> help "Target user for SSH key rotation")
+            "rotate-user-sshkey"
+            (info rotateUserSSHKeyOptions (progDesc "Generate and upload new SSH key for user@host"))
+    rotateUserSSHKeyOptions :: Parser Command
+    rotateUserSSHKeyOptions =
+        RotateUserSSHKey <$>
+        strArgument (metavar "HOST" <> help "Target host for single user's SSH key rotation") <*>
+        strArgument (metavar "USER" <> help "Target user for single user's SSH key rotation")

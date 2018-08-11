@@ -107,11 +107,14 @@ getUsers v h = case filter (\ ve -> host ve == h) (vault v) of
 updateUsers :: [User] -> User -> [User]
 updateUsers us u' = filter (\u'' -> user u'' /= un) us ++ [u'] where un = user u'
 
-updateVaultEntry :: [User] -> VaultEntry -> VaultEntry
-updateVaultEntry us ve = ve { users = us }
+updateVaultEntry :: VaultEntry -> [User] -> VaultEntry
+updateVaultEntry ve us = ve { users = us }
 
-updateVault :: VaultEntry -> Vault -> Vault
-updateVault ve v = v { vault = filter (\ve' -> host ve' /= hn) (vault v) ++ [ve] } where hn = host ve
+updateVault :: Vault -> VaultEntry -> Vault
+updateVault v ve = v { vault = filter (\ve' -> host ve' /= hn) (vault v) ++ [ve] } where hn = host ve
+
+
+
 
 
 decryptVault :: (ToSBytes a, JSON.FromJSON b) => a -> String -> IO b
