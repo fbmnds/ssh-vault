@@ -11,7 +11,7 @@ import Data.Semigroup ((<>))
 import Options.Applicative
 import GHC.IO.Handle
 import System.IO
-import Control.Exception
+
 
 data Opts = Opts
     {   optVerbose :: !Bool
@@ -36,19 +36,19 @@ cli =
         (opts :: Opts) <- execParser optsParser
         case optCommand opts of
             Insert s'         -> do
-                m <- getKeyPhrase
+                m <- getAESMasterKeyU
                 WF.insertSSHKey WF.Insert cfg m s'
             Replace s'        -> do
-                m <- getKeyPhrase
+                m <- getAESMasterKeyU
                 WF.insertSSHKey WF.Replace cfg m s'
             Init              -> WF.initVault cfg
             Print             -> WF.printVault cfg
             B64Encrypt        -> WF.b64EncryptSSHKeyPassphrase
             SSHAdd h u'       -> do
-                m <- getKeyPhrase
+                m <- getAESMasterKeyU
                 WF.sshAdd cfg m h u'
             RotateUserSSHKey h u' -> do
-                m <- getKeyPhrase
+                m <- getAESMasterKeyU
                 withFile "/dev/shm/log" AppendMode $ \ hnd -> do
                     hDuplicateTo hnd stderr
                     WF.rotateUserSSHKey cfg m h u'

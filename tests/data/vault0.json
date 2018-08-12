@@ -12,7 +12,9 @@
 			"users" : [
 				{   "user": "root",
 					"sshkeys": [{
-					    "phrase64": "cm9vdCpib3gxKioq",
+					    "phrase64": {
+                            "getKeyPhrase64": "cm9vdCpib3gxKioq"
+                        },
 					    "key_file": "/root/.ssh/id_box1",
 					    "key_priv": "##################",
 					    "key_pub": "##################",
@@ -22,7 +24,9 @@
 				},
 				{   "user": "a",
 				    "sshkeys": [{
-					    "phrase64": "YSpib3gxKioqKioq",
+					    "phrase64": {
+                            "getKeyPhrase64": "YSpib3gxKioqKioq"
+                        },
 					    "key_file": "/home/a/.ssh/id_box1",
 					    "key_priv": "##################",
 					    "key_pub": "##################",
@@ -45,7 +49,9 @@
 			"users" : [
 				{   "user": "root",
 					"sshkeys" : [{
-					    "phrase64": "cm9vdCpib3gyKioq",
+					    "phrase64": {
+                            "getKeyPhrase64": "cm9vdCpib3gyKioq"
+                        },
 					    "key_file": "/root/.ssh/id_box2",
 					    "key_priv": "##################",
 					    "key_pub": "##################",
@@ -55,7 +61,9 @@
 				},
 				{   "user": "b",
 					"sshkeys" : [{
-					    "phrase64": "Yipib3gyKioqKioq",
+					    "phrase64": {
+                            "getKeyPhrase64": "Yipib3gyKioqKioq"
+                        },
 					    "key_file": "/home/b/.ssh/id_box2",
 					    "key_priv": "##################",
 					    "key_pub": "##################",
@@ -78,7 +86,9 @@
 			"users" : [
 				{   "user": "root",
 					"sshkeys" : [{
-					    "phrase64": "cm9vdCpib3gyKioq",
+					    "phrase64": {
+                            "getKeyPhrase64": "cm9vdCpib3gyKioq"
+                        },
 					    "key_file": "/root/.ssh/id_2048",
 					    "key_priv": "##################",
 					    "key_pub": "##################",
@@ -88,7 +98,9 @@
 				},
 				{   "user": "c",
 					"sshkeys": [{
-					    "phrase64": "Yypib3gzKioqKioq",
+					    "phrase64": {
+                            "getKeyPhrase64": "Yypib3gzKioqKioq"
+                        },
 					    "key_file": "/home/c/.ssh/id_2048",
 					    "key_priv": "##################",
 					    "key_pub": "##################",
@@ -98,7 +110,9 @@
 				},
 				{   "user": "d",
 					"sshkeys": [{
-					    "phrase64": "ZCpib3gzKioqKioq",
+					    "phrase64": {
+                            "getKeyPhrase64": "ZCpib3gzKioqKioq"
+                        },
 					    "key_file": "/home/d/.ssh/id_2048",
 					    "key_priv": "##################",
 					    "key_pub": "##################",
@@ -108,7 +122,9 @@
 				},
 				{   "user": "e",
 					"sshkeys": [{
-						"phrase64": "e*ZSpib3gzKioqKioq",
+						"phrase64": {
+                            "getKeyPhrase64": "e*ZSpib3gzKioqKioq"
+                        },
 					    "key_file": "/home/e/.ssh/id_2048",
 					    "key_priv": "##################",
 					    "key_pub": "##################",

@@ -7,7 +7,7 @@ module SSHVault.Vault.Queue
   )
   where
 
-import SSHVault.Vault
+import SSHVault.SBytes
 
 
 data QueueEntry = UserUpdate (HostName, User) | HostUpdate VaultEntry

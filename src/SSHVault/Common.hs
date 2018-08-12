@@ -6,7 +6,7 @@ module SSHVault.Common
   , decryptAES
   , genAESKey
   , genSHA256
-  , getKeyPhrase
+  , getAESMasterKeyU
   , procEC
   , procD
   , shellD
@@ -42,7 +42,7 @@ import qualified Crypto.Simple.CTR as CTR
 import           Crypto.Hash (hash, SHA256 (..), Digest)
 
 import           Control.Exception (SomeException, catch)
---import           Control.Monad (void)
+import           Control.Monad (when)
 import           System.IO
 import           System.Random
 import           System.Process
@@ -90,14 +90,13 @@ randS :: Int -> IO String
 randS n = take n . stripChars ":;<=>?@[\\]^_`" . randomRs ('0','z') <$> newStdGen
 
 
-encryptAES :: ToSBytes a => BA.ScrubbedBytes -> a -> IO BA.ScrubbedBytes
+encryptAES :: ToSBytes a => AESMasterKey -> a -> IO BA.ScrubbedBytes
 encryptAES key msg = do
     c' <- CTR.encrypt (toBytes key) (toBytes msg)
     return $ toSBytes c'
 
 
-decryptAES :: ToSBytes a => BA.ScrubbedBytes -> a -> IO BA.ScrubbedBytes
--- CU.ByteString -> CU.ByteString -> IO CU.ByteString
+decryptAES :: ToSBytes a => AESMasterKey -> a -> IO BA.ScrubbedBytes
 decryptAES key cipher = do
     c' <- CTR.decrypt (toBytes key) (toBytes cipher)
     return $ toSBytes c'
@@ -108,24 +107,27 @@ genSHA256 key =
         h = hash $ toBytes key in
     show h
 
--- | TODO keep vault password
---   and its 32 byte representation for AES256
+-- | GOAL keep vault password (MasterKey)
+--   and its 32 byte representation for AES256 (AESMasterKey)
 --   in ScrubbedBytes throughout the app
-genAESKey :: ToSBytes a => a -> BA.ScrubbedBytes
-genAESKey key = toSBytes . take2nd . genSHA256 $ toSBytes key
+genAESKey :: MasterKey -> AESMasterKey
+genAESKey key = toAESMasterKey . take2nd . genSHA256 $ toSBytes key
 
 
-getKeyPhrase :: IO BA.ScrubbedBytes
-getKeyPhrase = do
+getAESMasterKeyU :: IO AESMasterKey
+getAESMasterKeyU = do
     old <- hGetEcho stdin
     putStr "Vault password: "
     hFlush stdout
     hSetEcho stdin False
-    keyPhrase <- getLine -- vault password passes IO in plain text
+    keyPhrase <- getLine -- TODO vault password passes IO in plain text
+                         -- IDEA use pointer to overwrite after use
+                         -- https://stackoverflow.com/questions/46743945/how-to-create-a-ptr-word8-for-bytestring?rq=1
+    when (length keyPhrase < 12) $ error "Vault password too short."
     putChar '\n'
     hFlush stdout
     hSetEcho stdin old
-    return $ toSBytes keyPhrase
+    return . genAESKey $ toMasterKey keyPhrase
 
 
 procEC :: String -> IO (ExitCode, String, String)
@@ -155,7 +157,7 @@ chmodDirR :: (ToSBytes a, ToSBytes b) => a -> b -> IO ()
 chmodDirR m fn = procD ("chmod" :: Tu.Text) ["-R", toText m, toText fn]
 
 
-execSSH :: ToSBytes a => a -> String -> IO ()
+execSSH :: KeyPhrase -> String -> IO ()
 execSSH ph sp = catch
     (readCreateProcess (shell cmd) [] >>= putStr)
     (\ (_ :: SomeException) -> do

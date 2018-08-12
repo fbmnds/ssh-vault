@@ -24,7 +24,6 @@ instance JSON.FromJSON Config
 instance JSON.ToJSON Config
 
 
--- type Config = (BA.ScrubbedBytes, Tu.FilePath, String)
 
 genDefaultConfig :: IO Config
 genDefaultConfig = do
