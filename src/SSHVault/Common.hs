@@ -30,19 +30,19 @@ import           SSHVault.SBytes
 import qualified SSHVault.Vault.Config as Cfg
 
 import Data.List (intercalate)
-import qualified Data.Text as T
-import qualified Data.ByteString as B
+--import qualified Data.Text as T
+--import qualified Data.ByteString as B
 --import qualified Data.ByteString.Lazy as BL
 import qualified Data.ByteArray as BA
-import qualified Data.ByteString.UTF8 as CU
+--import qualified Data.ByteString.UTF8 as CU
 --import           Data.Binary (decode)
 import Data.Time.Clock as Clock
 
 import qualified Crypto.Simple.CTR as CTR
 import           Crypto.Hash (hash, SHA256 (..), Digest)
 
-import           Control.Exception (SomeException, catch, bracket, bracket_)
-import           Control.Monad (void)
+import           Control.Exception (SomeException, catch)
+--import           Control.Monad (void)
 import           System.IO
 import           System.Random
 import           System.Process
@@ -91,7 +91,6 @@ randS n = take n . stripChars ":;<=>?@[\\]^_`" . randomRs ('0','z') <$> newStdGe
 
 
 encryptAES :: ToSBytes a => BA.ScrubbedBytes -> a -> IO BA.ScrubbedBytes
--- CU.ByteString -> CU.ByteString -> IO CU.ByteString
 encryptAES key msg = do
     c' <- CTR.encrypt (toBytes key) (toBytes msg)
     return $ toSBytes c'
@@ -103,14 +102,17 @@ decryptAES key cipher = do
     c' <- CTR.decrypt (toBytes key) (toBytes cipher)
     return $ toSBytes c'
 
-genSHA256 :: T.Text -> String
+genSHA256 :: ToSBytes a => a -> String
 genSHA256 key =
     let h :: Digest SHA256
         h = hash $ toBytes key in
     show h
 
-genAESKey :: T.Text -> BA.ScrubbedBytes
-genAESKey key = toSBytes . take2nd $ genSHA256 key
+-- | TODO keep vault password
+--   and its 32 byte representation for AES256
+--   in ScrubbedBytes throughout the app
+genAESKey :: ToSBytes a => a -> BA.ScrubbedBytes
+genAESKey key = toSBytes . take2nd . genSHA256 $ toSBytes key
 
 
 getKeyPhrase :: IO BA.ScrubbedBytes
@@ -119,11 +121,11 @@ getKeyPhrase = do
     putStr "Vault password: "
     hFlush stdout
     hSetEcho stdin False
-    keyPhrase <- getLine
+    keyPhrase <- getLine -- vault password passes IO in plain text
     putChar '\n'
     hFlush stdout
     hSetEcho stdin old
-    return . genAESKey $ toText keyPhrase
+    return $ toSBytes keyPhrase
 
 
 procEC :: String -> IO (ExitCode, String, String)
@@ -157,7 +159,7 @@ execSSH :: ToSBytes a => a -> String -> IO ()
 execSSH ph sp = catch
     (readCreateProcess (shell cmd) [] >>= putStr)
     (\ (_ :: SomeException) -> do
-        print ("could not execute expect script" :: String)
+        putStrLn ("could not execute expect script" :: String)
         error "exit")
     where
         (cmd :: String) = "bash -c \"expect << EOF\n"

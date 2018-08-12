@@ -24,23 +24,23 @@ import SSHVault.SBytes
 import SSHVault.Common
 
 --import Control.Monad.Except
-import Control.Exception (SomeException, catch, bracket_)
+import Control.Exception (SomeException, catch)
 
 import Data.Maybe (fromMaybe)
 --import Data.Text (split)
 --import Data.List (intercalate)
-import qualified Data.ByteString as B
+--import qualified Data.ByteString as B
 import qualified Data.ByteString.Base64 as B64
 import qualified Data.Aeson as JSON
 import Data.Aeson.Encode.Pretty
 import qualified Data.ByteArray as BA
 
-import System.IO
+--import System.IO
 import System.Exit (ExitCode(..))
 
 import qualified Turtle as Tu
 import Turtle.Prelude (testfile)
-import Turtle.Format
+
 
 
 data InsertMode
@@ -99,7 +99,7 @@ rotateUserSSHKey cfg m h un = catch (
             (ExitFailure _, o',  e') -> do
                 putStrLn $ "LOG : " ++ o' ++ "\n" ++ e'
                 error "failed to ssh"
-            (ExitSuccess  , o', e') -> do
+            (ExitSuccess,    _,  e') -> do
                 putStrLn $ "LOG : " ++ show e'
                 encryptVault m (Cfg.file cfg) newv
     )
@@ -108,9 +108,9 @@ rotateUserSSHKey cfg m h un = catch (
 
 genSSHFilename :: Cfg.Config -> HostName -> User -> IO String
 genSSHFilename cfg h u' = do
-    date <- Tu.date
-    let ud = format (s % w) (toText . user $ u') date
-    let kn = split4 . take2nd . genSHA256 $ format (s % s) (toText h) ud
+    date <- getUTC
+    let ud = user u' ++ date
+    let kn = split4 . take2nd . genSHA256 . toText $ h ++ ud
     let fn = Cfg.keystore cfg ++ "/id_" ++ kn
     return fn
 
@@ -121,15 +121,15 @@ chmodSSHFile = chmodFile ("600" :: String)
 
 genSSHKey :: Cfg.Config -> BA.ScrubbedBytes -> HostName -> User -> IO SSHKey
 genSSHKey cfg m h u' = do
-    printf "[*] generate new SSH key password\n"
+    putStrLn "[*] generate new SSH key password"
     pw' <- randS 32
     pw'' <- if toBytes m == ""
-        then return $ toSBytes pw' -- TODO rewrite test1, remove empty m
+        then return $ toSBytes pw'
         else encryptAES m pw'
     let pw = toString . B64.encode $ toBytes pw''
-    printf "[*] generate new SSH key file name\n"
+    putStrLn "[*] generate new SSH key file name"
     fn <- genSSHFilename cfg h u'
-    printf "[*] ssh-keygen new SSH key file\n"
+    putStrLn "[*] ssh-keygen new SSH priv/pub keys"
     procD
         "ssh-keygen"
         [ "-n", user u' ++ "@" ++ h
@@ -138,12 +138,13 @@ genSSHKey cfg m h u' = do
         , "-f", fn
         , "-P", pw'
         ]
-    printf "[+] new SSH secrets generated\n"
+    putStrLn "[+] new SSH keys generated"
     chmodSSHFile fn
-    printf "[+] chmod 600 on new SSH file\n"
+    putStrLn "[+] chmod 600 on new SSH private key file"
     c' <- readFile fn
     t' <- getUTC
-    return SSHKey { phrase64 = pw, key_file = fn, key_content = c', created_at = t' }
+    c'' <- readFile $ fn ++ ".pub"
+    return SSHKey { phrase64 = pw, key_file = fn, key_priv = c', key_pub = c'', created_at = t' }
 
 
 initVault :: Cfg.Config -> IO ()
@@ -164,7 +165,7 @@ initVault cfg = catch (
             -- procD "chown" [" ", d]
             encryptVault (toSBytes pw) v Vault {vault = []}
     )
-    (\(_ :: SomeException) -> print ("could not initialize vault file" :: String))
+    (\(_ :: SomeException) -> putStrLn ("could not initialize vault file" :: String))
 
 
 printVault :: Cfg.Config -> IO ()
@@ -172,9 +173,9 @@ printVault cfg = catch (
      do
         pw  <- getKeyPhrase
         (v :: Vault) <- decryptVault (toSBytes pw) (file cfg)
-        printf (s%"\n") . toText $ encodePretty v
+        putStrLn . toString $ encodePretty v
     )
-    (\(_ :: SomeException) -> print ("could not print vault" :: String))
+    (\(_ :: SomeException) -> putStrLn ("could not print vault" :: String))
 
 
 sshAdd :: ToSBytes a => Cfg.Config -> a -> HostName -> UserName -> IO ()
@@ -182,9 +183,9 @@ sshAdd cfg m h u' = catch (
     do
         (v :: Vault) <- decryptVault m (file cfg)
         case filter (\ve -> h == host ve) $ vault v of
-            []   -> do print "host not found"; error "exit"
+            []   -> do putStrLn "host not found"; error "exit"
             [ve] -> case filter (\u'' -> u' == user u'') (users ve) of
-                []   -> do print "user not found"; error "exit"
+                []   -> do putStrLn "user not found"; error "exit"
                 [u''] -> do
                     let (max', ph', fn) =
                             ( maximum $ sshkeys u''
@@ -193,15 +194,15 @@ sshAdd cfg m h u' = catch (
                             )
                     ph <- case ph' of
                         Left _ -> do
-                            print "could not decode SSH key passphrase, probably wrong master password"
+                            putStrLn "could not decode SSH key passphrase, probably wrong master password"
                             error "exit"
                         Right x' -> decryptAES (toSBytes m) x'
                     execSSH ph ("ssh-add -t 90 " ++ fn :: String)
-                _ -> do print "vault entry for user inconsistent"; error "exit"
-            _ -> do print "vault entry for host inconsistent"; error "exit"
+                _ -> do putStrLn "vault entry for user inconsistent"; error "exit"
+            _ -> do putStrLn "vault entry for host inconsistent"; error "exit"
         return ()
     )
-    (\(_ :: SomeException) -> printf (s%"\n") . toText $ "failed to ssh-add key for " ++ u' ++ "@" ++ h)
+    (\(_ :: SomeException) -> putStrLn $ "failed to ssh-add key for " ++ u' ++ "@" ++ h)
 {-
         _ <- return $ map
             (\ s' -> when (substring s' (show e')) (printf (s % "\n") (toText s') :: IO ()))
@@ -246,7 +247,7 @@ b64EncryptSSHKeyPassphrase = do
     aesk <- encryptAES m $ toBytes k
     let b64aesk = B64.encode $ toBytes aesk
     case B64.decode b64aesk of
-        Left  _ -> print ("could not b64encode/encrypt" :: String)
+        Left  _ -> putStrLn "could not b64encode/encrypt"
         Right x' -> do
             y <- decryptAES m x'
-            if toString y == k then print $ toString b64aesk else print ("encode/decode error" :: String)
+            if toString y == k then putStrLn $ toString b64aesk else putStrLn "encode/decode error"

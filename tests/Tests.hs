@@ -45,57 +45,34 @@ data TestConfig =
 instance FromJSON TestConfig
 instance ToJSON TestConfig
 
--- | test0: check stabiltity of the vault record/JSON format
-
-checkVaultJSON :: IO V.Vault
-checkVaultJSON = do
-  vsc' <- B.readFile "./tests/data/vault0.json"
-  let vsc = toSBytes vsc'
-  let v =
-        fromMaybe
-          (error "checkVaultJSON: failed to parse Vault decode $ encode\n")
-          . decode $ toLUBytes vsc
-  putStrLn "+++ OK, passed vault JSON decode test."
-  return v
-
-getHosts :: V.Vault -> [String]
-getHosts = fmap V.host . V.vault
-
-testGetHost :: V.Vault -> IO ()
-testGetHost v = case getHosts v of
-  ["box1","box2","box3"] -> putStrLn "+++ OK, passed getHost test."
-  _                      -> error "--- ERR, failed getHost test.\n"
+-- | test0: check vault deserialization (unencrypted)
 
 test0 :: IO ()
 test0 = do
   v <- checkVaultJSON
   testGetHost v
-  -- printf s . toText $ encodePretty vvf
+  -- puStrLn $ encodePretty vvf
   return ()
+  where
+    checkVaultJSON :: IO V.Vault
+    checkVaultJSON = do
+      vsc' <- B.readFile "./tests/data/vault0.json"
+      let vsc = toLUBytes vsc'
+      let v =
+            fromMaybe
+              (error "checkVaultJSON: failed to parse Vault decode $ encode\n")
+              $ decode vsc
+      putStrLn "+++ OK, passed vault JSON decode test."
+      return v
+
+    testGetHost :: V.Vault -> IO ()
+    testGetHost v = case V.getHosts v of
+      ["box1","box2","box3"] -> putStrLn "+++ OK, passed getHost test."
+      _                      -> error "--- ERR, failed getHost test.\n"
+
 
 
 -- | test1 : roundtrip to/from disk for vault user update with new SSH key/passphrase
-
-updateVault01 :: V.SSHKey -> V.Vault
-updateVault01 s01' =
-  let
-    s01 = s01'
-    s02 = V.SSHKey "YSpib3gxKioqKioq" "/home/a/.ssh/id_box1" "##################" "2018-08-05 17:58:39.67413695 UTC"
-    u01 = V.User "root" [s01] "2018-08-05 17:58:39.67413695 UTC"
-    u02 = V.User "a" [s02] "2018-08-05 17:58:39.67413695 UTC"
-    h0  = V.HostData "" "" "" 22 "2018-08-05 17:58:39.67413695 UTC"
-    ve0 = V.VaultEntry  "box1" h0 [u01,u02] "2018-08-05 17:58:39.67413695 UTC" in
-  V.Vault [ve0]
-
-genTestConfig :: IO Cfg.Config
-genTestConfig = do
-  vdir <- Tu.pwd
-  return Cfg.Config {
-        Cfg.dir      = toString (format fp vdir) ++ "/tests/data"
-      , Cfg.file     = toString (format fp vdir) ++ "/tests/data/.vault"
-      , Cfg.keystore = toString (format fp vdir) ++ "/tests/data/.vault/STORE"
-      , Cfg.ttl      = 30
-      }
 
 test1 :: Cfg.Config -> IO ()
 test1 dcfg = do
@@ -105,20 +82,41 @@ test1 dcfg = do
       sk = [V.SSHKey "root*box1***"
                   "/root/.ssh/id_box1"
                   "##################"
+                  "##################"
                   "2018-08-05 17:58:39.67413695 UTC"]
       u' = V.User "root" sk "2018-08-05 17:58:39.67413695 UTC"
 
   s' <- genSSHKey dcfg (toSBytes (""::String)) "root" u'
-  let v1 = updateVault01 $ V.SSHKey (V.phrase64 s') (V.key_file s') "##################" "2018-08-05 17:58:39.67413695 UTC"
-  printf s "+++ OK, passed genSSHKey test.\n"
+  let v1 = updateVault01 $
+        V.SSHKey
+          (V.phrase64 s')
+          (V.key_file s')
+          "##################"
+          "##################"
+          "2018-08-05 17:58:39.67413695 UTC"
+  putStrLn "+++ OK, passed genSSHKey test."
 
   V.encryptVault (toSBytes $ genAESKey vk) fn v1
   putStrLn "[*] encryptVault"
   v2 <- V.decryptVault (toSBytes $ genAESKey vk) fn
-  if v1 == v2 then printf s "+++ OK, passed decryptVault test.\n" else
-    printf s "-- ERR, failed decryptVault test.\n"
+  if v1 == v2 then putStrLn "+++ OK, passed decryptVault test."
+  else             putStrLn "-- ERR, failed decryptVault test."
+  where
+    updateVault01 :: V.SSHKey -> V.Vault
+    updateVault01 s01' =
+      let
+        s01 = s01'
+        s02 = V.SSHKey "YSpib3gxKioqKioq" "/home/a/.ssh/id_box1" "##################" "##################" "2018-08-05 17:58:39.67413695 UTC"
+        u01 = V.User "root" [s01] "2018-08-05 17:58:39.67413695 UTC"
+        u02 = V.User "a" [s02] "2018-08-05 17:58:39.67413695 UTC"
+        h0  = V.HostData "" "" "" 22 "2018-08-05 17:58:39.67413695 UTC"
+        ve0 = V.VaultEntry  "box1" h0 [u01,u02] "2018-08-05 17:58:39.67413695 UTC" in
+      V.Vault [ve0]
 
 
+
+
+-- develop key synchronization
 
 writeSSHKey :: BA.ScrubbedBytes -> V.SSHKey -> IO ExitCode
 writeSSHKey m sk = catch (do
@@ -129,7 +127,7 @@ writeSSHKey m sk = catch (do
     Right s0 -> do
         ph' <- decryptAES m s0
         return $ toString ph'
-  B.writeFile priv (toBytes $ V.key_content sk)
+  B.writeFile priv (toBytes $ V.key_priv sk)
   chmodFile ("600" :: String) (priv :: String)
   _ <- procEC $ "ssh-keygen -f " ++ priv ++ " -y -P " ++ ph ++ " > " ++ pub
   chmodFile ("644" :: String) (pub :: String)
@@ -149,6 +147,8 @@ writeUserSSHKeys m v h un = do
     _           -> return (fst acc, snd acc ++ [fn])) ([],[]) rs
   return (sks, fst rs', snd rs')
 
+
+-- test2 : test key synchronization
 
 test2 :: IO ()
 test2 = do
@@ -183,6 +183,8 @@ test2 = do
   print $ intersection (fromList pub_content) (fromList $ fmap toBytes (splitOn "\n" (toText a_k)))
 
 
+-- | property check on string conversions (depricated)
+
 prop_scrubbedbytes :: B.ByteString -> Property
 prop_scrubbedbytes t =
   True
@@ -202,12 +204,24 @@ prop_scrubbedbytes t =
         t'' = toBytes t
 
 
+-- | test setup
+
+genTestConfig :: IO Cfg.Config
+genTestConfig = do
+  vdir <- Tu.pwd
+  return Cfg.Config {
+        Cfg.dir      = toString (format fp vdir) ++ "/tests/data"
+      , Cfg.file     = toString (format fp vdir) ++ "/tests/data/.vault"
+      , Cfg.keystore = toString (format fp vdir) ++ "/tests/data/.vault/STORE"
+      , Cfg.ttl      = 30
+      }
+
 
 main :: IO ()
 main = do
-  test2
   test0
-  --dcfg <- genTestConfig
-  --test1 dcfg
+  dcfg <- genTestConfig
+  test1 dcfg
+  shellD $ "rm " ++ Cfg.keystore dcfg ++ "/*"
+  --test2
   quickCheck prop_scrubbedbytes
-  --shellD $ "rm " ++ Cfg.keystore dcfg ++ "/*"

@@ -15,6 +15,7 @@ module SSHVault.Vault
     , SSHKey (..)
     , encryptVault
     , decryptVault
+    , getHosts
     , getUser
     , getUsers
     , updateUsers
@@ -44,13 +45,14 @@ type UTC = String
 data SSHKey =
   SSHKey { phrase64    :: Phrase64
          , key_file    :: String
-         , key_content :: String
+         , key_priv    :: String
+         , key_pub     :: String
          , created_at  :: UTC
          } deriving (Show, Generic, Eq)
 instance JSON.FromJSON SSHKey
 instance JSON.ToJSON   SSHKey
 instance Ord           SSHKey where
-  (SSHKey _ _ _ c1) `compare` (SSHKey _ _ _ c2) = c1 `compare` c2
+  (SSHKey _ _ _ _ c1) `compare` (SSHKey _ _ _ _ c2) = c1 `compare` c2
 
 
 type UserName = String
@@ -91,6 +93,9 @@ newtype Vault =
 instance JSON.FromJSON Vault
 instance JSON.ToJSON Vault
 
+
+getHosts :: Vault -> [String]
+getHosts = fmap host . vault
 
 getUser :: Vault -> HostName -> UserName -> [User]
 getUser v h un = case filter (\ uvh -> user uvh == un) . concatMap users $ filter (\ ve -> host ve == h) (vault v) of
