@@ -48,11 +48,12 @@ instance ToJSON TestConfig
 -- | test0: check vault deserialization (unencrypted)
 
 test0 :: IO ()
-test0 = do
+test0 = catch (do
   v <- checkVaultJSON
   testGetHost v
   -- puStrLn $ encodePretty vvf
-  return ()
+  putStrLn "+++ OK, passed test0: check vault deserialization (unencrypted)."
+  )(\ (e' :: SomeException) -> putStrLn $ "+++ ERR, failed test0: check vault deserialization (unencrypted).\n" ++ show e')
   where
     checkVaultJSON :: IO V.Vault
     checkVaultJSON = do
@@ -69,6 +70,7 @@ test0 = do
     testGetHost v = case V.getHosts v of
       ["box1","box2","box3"] -> putStrLn "+++ OK, passed getHost test."
       _                      -> error "--- ERR, failed getHost test.\n"
+
 
 
 
@@ -99,8 +101,8 @@ test1 dcfg = do
   V.encryptVault (toSBytes $ genAESKey vk) fn v1
   putStrLn "[*] encryptVault"
   v2 <- V.decryptVault (toSBytes $ genAESKey vk) fn
-  if v1 == v2 then putStrLn "+++ OK, passed decryptVault test."
-  else             putStrLn "-- ERR, failed decryptVault test."
+  if v1 == v2 then putStrLn "+++ OK, passed test1 : roundtrip to/from disk for vault user update."
+  else             putStrLn "-- ERR, failed test1 : roundtrip to/from disk for vault user update."
   where
     updateVault01 :: V.SSHKey -> V.Vault
     updateVault01 s01' =
@@ -112,7 +114,6 @@ test1 dcfg = do
         h0  = V.HostData "" "" "" 22 "2018-08-05 17:58:39.67413695 UTC"
         ve0 = V.VaultEntry  "box1" h0 [u01,u02] "2018-08-05 17:58:39.67413695 UTC" in
       V.Vault [ve0]
-
 
 
 
