@@ -13,10 +13,10 @@ import SSHVault.Workflows
 import SSHVault.Common
 
 import qualified Data.ByteString as B
-import qualified Data.ByteString.Base64 as B64
+-- import qualified Data.ByteString.Base64 as B64
 import qualified Data.ByteArray as BA
-import Data.Set
-import Data.Text (Text, splitOn)
+
+import Data.Text (splitOn)
 import Data.Maybe (fromMaybe)
 import Data.Aeson as JSON
 import Data.Aeson.Encode.Pretty (encodePretty)
@@ -26,7 +26,7 @@ import Test.QuickCheck
 
 import Control.Exception (SomeException, catch)
 import Control.Monad
-import System.Exit (ExitCode(..))
+-- import System.Exit (ExitCode(..))
 import qualified Turtle as Tu
 import Turtle.Format
 
@@ -69,6 +69,7 @@ test0 = catch (do
 
 test1 :: Cfg.Config -> IO ()
 test1 dcfg = do
+  let debug = False
   h <- Tu.home
   let fn = Ty.toString (format fp h) ++ "/.ssh/vault" ++ ".NEW"
       m = genAESKey $ Ty.toMasterKey "0123456789"
@@ -96,8 +97,8 @@ test1 dcfg = do
   putStrLn "[*] encryptVault"
   (v2 :: Ty.Vault) <- V.decryptVault m fn
   putStrLn "[*] decryptVault"
-  putStrLn . Ty.toString  $ encodePretty v1
-  putStrLn . Ty.toString  $ encodePretty v2
+  when debug . putStrLn . Ty.toString  $ encodePretty v1
+  when debug . putStrLn . Ty.toString  $ encodePretty v2
   if v1 == v2 then putStrLn "+++ OK, passed test1 : roundtrip to/from disk for vault user update."
   else             putStrLn "--- ERR, failed test1 : roundtrip to/from disk for vault user update."
   where
@@ -121,61 +122,7 @@ test1 dcfg = do
 
 -- develop key synchronization
 
-writeSSHKey :: Ty.AESMasterKey -> Ty.SSHKey -> IO ExitCode
-writeSSHKey m sk = catch (do
-  let priv = Ty.key_file sk
-      pub  = priv ++ ".pub"
-  ph <- case B64.decode . Ty.toBytes $ Ty.phrase64 sk of
-    Left _   -> error "failed to b64decode SSH key passphrase"
-    Right s0 -> do
-        ph' <- decryptAES m s0
-        return $ Ty.toString ph'
-  B.writeFile priv (Ty.toBytes $ Ty.key_priv sk)
-  chmodFile ("600" :: String) (priv :: String)
-  _ <- procEC $ "ssh-keygen -f " ++ priv ++ " -y -P " ++ ph ++ " > " ++ pub
-  chmodFile ("644" :: String) (pub :: String)
-  return ExitSuccess
-  )
-  (\(e' :: SomeException) -> do
-    putStrLn $ "LOG: could not write SSH key:" ++ Ty.key_file sk ++ "(.pub)\n" ++ show e'
-    return (ExitFailure 1))
 
-
-writeUserSSHKeys :: Ty.AESMasterKey -> Ty.Vault -> Ty.HostName -> Ty.UserName -> IO ([Ty.SSHKey], [String], [String])
-writeUserSSHKeys m v h un = do
-  let sks = concatMap Ty.sshkeys $ V.getUser v h un
-  rs <- mapM (\sk -> do ec <-  writeSSHKey m sk; return (Ty.key_file sk,ec)) sks
-  rs' <- foldM (\ acc (fn,ec) -> case ec of
-    ExitSuccess -> return (fst acc ++ [fn], snd acc)
-    _           -> return (fst acc, snd acc ++ [fn])) ([],[]) rs
-  mapM_ (\ err -> putStrLn $ "LOG: could not write " ++ err) (snd rs')
-  return (sks, fst rs', snd rs')
-
-
-readPubSSHFilesFromVault :: Cfg.Config -> Ty.AESMasterKey -> Ty.HostName -> Ty.UserName -> IO [String]
-readPubSSHFilesFromVault cfg m h un = do
-  (v :: Ty.Vault) <- V.decryptVault m (Cfg.file cfg)
-  u' <- case V.getUser v h un of
-      [u''] -> return u''
-      []    -> error $ "missing user " ++ un
-      _     -> error "vault inconsistent"
-  return $ fmap Ty.key_pub (Ty.sshkeys u')
-
-
-getAuthorizedKeys :: Cfg.Config -> Ty.AESMasterKey -> Ty.HostName -> Ty.UserName -> IO [Data.Text.Text]
-getAuthorizedKeys cfg m h un = do
-  let cmd  = "ssh " ++ un ++ "@" ++ h ++ " 'cat ~/.ssh/authorized_keys'"
-  sshAdd (cfg { Cfg.ttl = 1 }) m h un
-  r <- procEC cmd
-  a_k <- case r of
-      (ExitFailure _, o', e') -> do
-        putStrLn $ "LOG :" ++ show e'
-        unless (Prelude.null o') $ putStrLn $ "LOG :" ++ show o'
-        error "failed to retrieve authorized_keys"
-      (ExitSuccess  , o', e') -> do
-        unless (Prelude.null e') $ putStrLn $ "LOG :" ++ show e'
-        return o'
-  return $ splitOn (Ty.toText "\n") (Ty.toText a_k)
 
 -- test2 : test key synchronization WIP
 
@@ -189,28 +136,15 @@ test2 = do
   let un   = user tcfg
       h    = host tcfg
       m    = genAESKey . Ty.toMasterKey $ mpw  tcfg
-
   (v :: Ty.Vault) <- V.decryptVault m (Cfg.file cfg)
   _ <- case V.getUser v h un of
       [u''] -> return u''
       []    -> error $ "missing user " ++ un
       _     -> error "vault inconsistent"
-
-  a_k <- getAuthorizedKeys cfg m h un
-  pub_content <- readPubSSHFilesFromVault cfg m h un
-
-  putStrLn "diff between vault and authorized keys:"
-  print $ intersection
-           (fromList $ fmap sel a_k)
-           (fromList $ fmap sel pub_content)
-  where
-    const_RSA_4096_KEY_LENGTH = 716
-    sel ln = fmap
-                snd .
-                Prelude.filter (\p' -> fst p' == const_RSA_4096_KEY_LENGTH) $
-                  fmap
-                    (\p -> (length $ Ty.toString p, p))
-                    (splitOn (Ty.toText " ") (Ty.toText ln))
+  r <- confirmSSHAccess cfg m h un
+  case r of
+    "Access confirmed" -> do putStrLn "+++ OK, access confirmed"; return ()
+    _                  -> error "--- ERR, access failed"
 
 
 -- | property check on string conversions (depricated)

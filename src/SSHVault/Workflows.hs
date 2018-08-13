@@ -15,6 +15,10 @@ module SSHVault.Workflows
     , sshAdd
     , insertSSHKey
     , b64EncryptSSHKeyPassphrase
+    , readPubSSHFilesFromVault
+    , getAuthorizedKeys
+    , writeUserSSHKeys
+    , confirmSSHAccess
     )
     where
 
@@ -23,17 +27,19 @@ import SSHVault.Vault.Config as Cfg
 import SSHVault.SBytes
 import SSHVault.Common
 
---import Control.Monad.Except
+import Control.Monad
 import Control.Exception (SomeException, catch)
 
+import Data.Set (fromList, intersection)
 import Data.Maybe (fromMaybe)
---import Data.Text (split)
 --import Data.List (intercalate)
---import qualified Data.ByteString as B
+import qualified Data.ByteString as B
 import qualified Data.ByteString.Base64 as B64
 import qualified Data.Aeson as JSON
 import Data.Aeson.Encode.Pretty
 import qualified Data.ByteArray as BA
+import qualified Data.Text as T
+--import Data.Text (split)
 
 --import System.IO
 import System.Exit (ExitCode(..))
@@ -250,3 +256,79 @@ b64EncryptSSHKeyPassphrase = do
         Right x' -> do
             y <- decryptAES m x'
             if toString y == k then putStrLn $ toString b64aesk else putStrLn "encode/decode error"
+
+
+readPubSSHFilesFromVault :: Cfg.Config -> AESMasterKey -> HostName -> UserName -> IO [String]
+readPubSSHFilesFromVault cfg m h un = do
+  (v :: Vault) <- decryptVault m (Cfg.file cfg)
+  u' <- case getUser v h un of
+      [u''] -> return u''
+      []    -> error $ "missing user " ++ un
+      _     -> error "vault inconsistent"
+  return $ fmap key_pub (sshkeys u')
+
+
+getAuthorizedKeys :: Cfg.Config -> AESMasterKey -> HostName -> UserName -> IO [T.Text]
+getAuthorizedKeys cfg m h un = do
+  let cmd  = "ssh " ++ un ++ "@" ++ h ++ " 'cat ~/.ssh/authorized_keys'"
+  sshAdd (cfg { Cfg.ttl = 1 }) m h un
+  r <- procEC cmd
+  a_k <- case r of
+      (ExitFailure _, o', e') -> do
+        putStrLn $ "LOG :" ++ show e'
+        unless (null o') $ putStrLn $ "LOG :" ++ show o'
+        error "failed to retrieve authorized_keys"
+      (ExitSuccess  , o', e') -> do
+        unless (null e') $ putStrLn $ "LOG :" ++ show e'
+        return o'
+  return $ T.splitOn "\n" (toText a_k)
+
+
+writeUserSSHKeys :: AESMasterKey -> Vault -> HostName -> UserName -> IO ([SSHKey], [String], [String])
+writeUserSSHKeys m v h un = do
+  let sks = concatMap sshkeys $ getUser v h un
+  rs <- mapM (\sk -> do ec <-  writeSSHKey m sk; return (key_file sk,ec)) sks
+  rs' <- foldM (\ acc (fn,ec) -> case ec of
+    ExitSuccess -> return (fst acc ++ [fn], snd acc)
+    _           -> return (fst acc, snd acc ++ [fn])) ([],[]) rs
+  mapM_ (\ err -> putStrLn $ "LOG: could not write " ++ err) (snd rs')
+  return (sks, fst rs', snd rs')
+    where
+        writeSSHKey :: AESMasterKey -> SSHKey -> IO ExitCode
+        writeSSHKey m' sk = catch (do
+          let priv = key_file sk
+              pub  = priv ++ ".pub"
+          ph <- case B64.decode . toBytes $ phrase64 sk of
+            Left _   -> error "failed to b64decode SSH key passphrase"
+            Right s0 -> do
+                ph' <- decryptAES m' s0
+                return $ toString ph'
+          B.writeFile priv (toBytes $ key_priv sk)
+          chmodFile ("600" :: String) (priv :: String)
+          _ <- procEC $ "ssh-keygen -f " ++ priv ++ " -y -P " ++ ph ++ " > " ++ pub
+          chmodFile ("644" :: String) (pub :: String)
+          return ExitSuccess
+          )
+          (\(e' :: SomeException) -> do
+            putStrLn $ "LOG: could not write SSH key:" ++ key_file sk ++ "(.pub)\n" ++ show e'
+            return (ExitFailure 1))
+
+
+confirmSSHAccess :: Cfg.Config -> AESMasterKey -> HostName -> UserName -> IO String
+confirmSSHAccess cfg m h un = do
+  a_k <- getAuthorizedKeys cfg m h un
+  pub_content <- readPubSSHFilesFromVault cfg m h un
+  case concat $ intersection
+           (fromList $ fmap sel a_k)
+           (fromList $ fmap sel pub_content) of
+    [] -> return "Access failed"
+    _  -> return "Access confirmed"
+  where
+    const_RSA_4096_KEY_LENGTH = 716
+    sel ln = fmap
+                snd .
+                Prelude.filter (\p' -> fst p' == const_RSA_4096_KEY_LENGTH) $
+                  fmap
+                    (\p -> (length $ toString p, p))
+                    (T.splitOn " " (toText ln))
+

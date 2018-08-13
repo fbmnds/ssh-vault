@@ -45,7 +45,8 @@ library
         base64-bytestring -any,
         optparse-applicative -any,
         time -any,
-        process -any
+        process -any,
+        containers -any
 
 
 executable ssh-vault
@@ -83,7 +84,8 @@ executable ssh-vault
         base64-bytestring -any,
         optparse-applicative -any,
         time -any,
-        process -any
+        process -any,
+        containers -any
 
 test-suite ssh-vault-tests
     type: exitcode-stdio-1.0
