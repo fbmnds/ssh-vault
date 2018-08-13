@@ -19,7 +19,7 @@ import Data.Set
 import Data.Text (Text, splitOn)
 import Data.Maybe (fromMaybe)
 import Data.Aeson as JSON
--- import Data.Aeson.Encode.Pretty (encodePretty)
+import Data.Aeson.Encode.Pretty (encodePretty)
 import GHC.Generics
 
 import Test.QuickCheck
@@ -78,7 +78,7 @@ test1 dcfg = do
               "##################"
               "##################"
               "2018-08-05 17:58:39.67413695 UTC"]
-      u' = Ty.User "root" sk "2018-08-05 17:58:39.67413695 UTC"
+      u' = Ty.User "root" sk ["pub1","pub2"] "2018-08-05 17:58:39.67413695 UTC"
 
   s' <- genSSHKeyU dcfg m "root" u'
 
@@ -96,8 +96,8 @@ test1 dcfg = do
   putStrLn "[*] encryptVault"
   (v2 :: Ty.Vault) <- V.decryptVault m fn
   putStrLn "[*] decryptVault"
-  -- putStrLn . Ty.toString  $ encodePretty v1
-  -- putStrLn . Ty.toString  $ encodePretty v2
+  putStrLn . Ty.toString  $ encodePretty v1
+  putStrLn . Ty.toString  $ encodePretty v2
   if v1 == v2 then putStrLn "+++ OK, passed test1 : roundtrip to/from disk for vault user update."
   else             putStrLn "--- ERR, failed test1 : roundtrip to/from disk for vault user update."
   where
@@ -111,8 +111,8 @@ test1 dcfg = do
                 "##################"
                 "##################"
                 "2018-08-05 17:58:39.67413695 UTC"
-        u01 = Ty.User "root" [s01] "2018-08-05 17:58:39.67413695 UTC"
-        u02 = Ty.User "a" [s02] "2018-08-05 17:58:39.67413695 UTC"
+        u01 = Ty.User "root" [s01] [] "2018-08-05 17:58:39.67413695 UTC"
+        u02 = Ty.User "a" [s02] ["pub1","pub2"] "2018-08-05 17:58:39.67413695 UTC"
         h0  = Ty.HostData "" "" "" 22 "2018-08-05 17:58:39.67413695 UTC"
         ve0 = Ty.VaultEntry  "box1" h0 [u01,u02] "2018-08-05 17:58:39.67413695 UTC" in
       Ty.Vault [ve0]

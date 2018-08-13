@@ -122,9 +122,9 @@ chmodSSHFile = chmodFile ("600" :: String)
 genSSHKeyU :: Cfg.Config -> AESMasterKey -> HostName -> User -> IO SSHKey
 genSSHKeyU cfg m h u' = catch (do
     putStrLn "[*] generate new SSH key password"
-    ph' <- randS 32                                 -- unscrubbed
+    ph' <- randS 32                                     -- unscrubbed
     ph'' <- encryptAES m ph'
-    let ph = toKeyPhrase64 . B64.encode $ toBytes ph''   -- unscrubbed, but encrypted
+    let ph = toKeyPhrase64 . B64.encode $ toBytes ph''  -- unscrubbed, but encrypted
     putStrLn "[*] generate new SSH key file name"
     fn <- genSSHFilename cfg h u'
     putStrLn "[*] ssh-keygen new SSH priv/pub keys"
@@ -198,7 +198,7 @@ sshAdd cfg m h u' = catch (
                             putStrLn "could not decode SSH key passphrase, probably wrong master password"
                             error "exit"
                         Right x' -> decryptAES m x'
-                    execSSH (toKeyPhrase ph) ("ssh-add -t 90 " ++ fn :: String)
+                    execSSH (toKeyPhrase ph) ("ssh-add -t " ++ show (Cfg.ttl cfg) ++ " " ++ fn :: String)
                 _ -> do putStrLn "vault entry for user inconsistent"; error "exit"
             _ -> do putStrLn "vault entry for host inconsistent"; error "exit"
         return ()

@@ -57,10 +57,12 @@ instance Ord           SSHKey where
 
 
 type UserName = String
+type PubKey   = String
 data User =
-  User { user        :: UserName
-       , sshkeys     :: [SSHKey]
-       , created_at  :: UTC
+  User { user          :: UserName
+       , sshkeys       :: [SSHKey]
+       , external_keys :: [PubKey]
+       , created_at    :: UTC
        } deriving (Show, Generic, Eq)
 instance JSON.FromJSON User
 instance JSON.ToJSON   User
