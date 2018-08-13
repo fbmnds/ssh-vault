@@ -25,6 +25,8 @@ import qualified Data.ByteString.Base64 as B64
 import qualified Data.Aeson as JSON
 import           Data.Maybe (fromMaybe)
 
+--import Control.Exception (SomeException, catch)
+
 
 
 getHosts :: Vault -> [String]
@@ -52,16 +54,16 @@ updateVault :: Vault -> VaultEntry -> Vault
 updateVault v ve = v { vault = filter (\ve' -> host ve' /= hn) (vault v) ++ [ve] } where hn = host ve
 
 
-decryptVault :: JSON.FromJSON a => AESMasterKey -> String -> IO a
+decryptVault :: AESMasterKey -> String -> IO Vault
 decryptVault key fn = do
   v <- B.readFile fn
     >>= decryptAES key
   case B64.decode (toBytes v) of
-    Left s' -> error s'
+    Left  s' -> error s'
     Right s' -> return . fromMaybe (error "failed to JSON.decode in decryptVault") . JSON.decode $ toLUBytes s'
 
 encryptVault :: AESMasterKey -> String -> Vault -> IO ()
 encryptVault k fn v =
   encryptAES k (B64.encode . toBytes $ JSON.encode v)
   >>= \ c' -> B.writeFile fn (toBytes c')
-  >> chmodFile ("600" :: String) fn
+  >> chmodF ("600" :: String) fn

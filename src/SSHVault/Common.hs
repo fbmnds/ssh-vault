@@ -14,9 +14,9 @@ module SSHVault.Common
   , execExp
   , rand1000
   , randS
-  , chmodFile
-  , chmodDir
-  , chmodDirR
+  , chmodF
+  , chmodD
+  , chmodD_R
   , take2nd
   , split4
   , substring
@@ -147,14 +147,14 @@ shellD a = do
         Tu.ExitFailure _ -> Tu.die $ Tu.format (s % s %s) "failed to execute: " (toText a) "\n"
         _ -> return ()
 
-chmodFile :: (ToSBytes a, ToSBytes b) => a -> b -> IO ()
-chmodFile m fn = procD ("chmod" :: Tu.Text) [toText m, toText fn]
+chmodF :: (ToSBytes a, ToSBytes b) => a -> b -> IO ()
+chmodF m fn = procD ("chmod" :: Tu.Text) [toText m, toText fn]
 
-chmodDir :: (ToSBytes a, ToSBytes b) => a -> b -> IO ()
-chmodDir m fn = procD ("chmod" :: Tu.Text) [toText m, toText fn]
+chmodD :: (ToSBytes a, ToSBytes b) => a -> b -> IO ()
+chmodD m fn = procD ("chmod" :: Tu.Text) [toText m, toText fn]
 
-chmodDirR :: (ToSBytes a, ToSBytes b) => a -> b -> IO ()
-chmodDirR m fn = procD ("chmod" :: Tu.Text) ["-R", toText m, toText fn]
+chmodD_R :: (ToSBytes a, ToSBytes b) => a -> b -> IO ()
+chmodD_R m fn = procD ("chmod" :: Tu.Text) ["-R", toText m, toText fn]
 
 
 execSSH :: KeyPhrase -> String -> IO ()
@@ -178,7 +178,7 @@ execExp _ exp' ls = do
         let fn = "/dev/shm/" ++ exp' ++ "-" ++ intercalate "-" (map show r3) ++ ".exp"
         catch ( do
             _ <- procD "touch" [fn]
-            _ <- chmodFile ("600" :: String) fn
+            _ <- chmodF ("600" :: String) fn
             _ <- writeFile fn (intercalate "\n" ls)
             _ <- procD "expect" ["-f", fn]
             _ <- procD "rm" [fn]

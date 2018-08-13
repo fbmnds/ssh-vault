@@ -29,10 +29,11 @@ import SSHVault.Common
 
 import Control.Monad
 import Control.Exception (SomeException, catch)
+import Control.Concurrent (threadDelay)
 
 import Data.Set (fromList, intersection)
 import Data.Maybe (fromMaybe)
---import Data.List (intercalate)
+import Data.List (intercalate)
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Base64 as B64
 import qualified Data.Aeson as JSON
@@ -46,7 +47,6 @@ import System.Exit (ExitCode(..))
 
 import qualified Turtle as Tu
 import Turtle.Prelude (testfile)
-
 
 
 data InsertMode
@@ -65,41 +65,36 @@ getSSHKeyphrase m u' = case B64.decode . toBytes $ phrase64 max' of
         max' = maximum $ sshkeys u'
 
 
-{-
-restoreUserSSHKey :: Cfg.Config -> BA.ScrubbedBytes -> HostName -> UserName -> IO ()
-restoreUserSSHKey cfg m h un = catch (
-    do
-        (v :: Vault) <- decryptVault (toSBytes m) (Cfg.file cfg)
-        let users' = getUsers v h
-        user' <- case getUser v h un of
-            [u''] -> return u''
-            _     -> error $ "missing user " ++ un
-        let fns = fmap key_file (sshkeys user')
-        _ <- map (\ fn -> B.writeFile fn) fns
-        return ()
-    )
-    (\(_ :: SomeException) -> putStrLn "could not rotate SSH key")
--}
-
--- TODO avoid double entries in ~/.ssh/authorized_keys
 rotateUserSSHKey :: Cfg.Config -> AESMasterKey -> HostName -> UserName -> IO ()
 rotateUserSSHKey cfg m h un = catch (
     do
+        --a_k <- getAuthorizedKeys cfg m h un
+        --print a_k
         (v :: Vault) <- decryptVault m (Cfg.file cfg)
         let users' = getUsers v h
         user' <- case getUser v h un of
             [u''] -> return u''
             _     -> error $ "missing user " ++ un
         newkey <- genSSHKeyU cfg m h user'
-        let newsshkeys = sshkeys user' ++ [newkey]
-            newusers   = updateUsers users' $ user' { sshkeys = newsshkeys }
-            newve      = updateVaultEntry (head $ filter (\ve -> host ve == h) (vault v)) newusers
-            newv       = updateVault v newve
-            npub       = key_file newkey ++ ".pub"
-            port'      = show . port $ host_data newve
-            cmd        = "cat " ++ npub ++ " | ssh -p " ++ port' ++ " " ++ un ++ "@" ++ h
-                                        ++ " 'cat >> ~/.ssh/authorized_keys'"
-        sshAdd cfg m h un
+        let newsshkeys   = sshkeys user' ++ [newkey]
+            newusers     = updateUsers users' $ user' { sshkeys = newsshkeys }
+            newve        = updateVaultEntry (head $ filter (\ve -> host ve == h) (vault v)) newusers
+            newv         = updateVault v newve
+            -- npub          = key_file newkey ++ ".pub"
+            port'        = show . port $ host_data newve
+            new_a_k      = external_keys user' ++ [key_pub newkey]
+            new_a_k_file = Cfg.dir cfg ++ "/authorized_keys"
+            cmd          = "cat " ++ new_a_k_file
+                                  ++ " | ssh -p " ++ port' ++ " " ++ un ++ "@" ++ h
+                                  ++ " 'cat > ~/.ssh/authorized_keys'"
+        procD "touch" [new_a_k_file]
+        chmodSSHFile new_a_k_file
+        B.writeFile new_a_k_file .toBytes $ intercalate "\n" new_a_k
+        -- use old key
+        -- shellD ("ssh-add -L" :: String)
+        sshAdd (cfg { Cfg.ttl = 1 }) m h un
+        -- shellD ("ssh-add -L" :: String)
+        -- use old key
         r <- procEC cmd
         case r of
             (ExitFailure _, o',  e') -> do
@@ -107,6 +102,7 @@ rotateUserSSHKey cfg m h un = catch (
                 error "failed to ssh"
             (ExitSuccess,    _,  e') -> do
                 putStrLn $ "LOG : " ++ show e'
+                -- persist new key in vault
                 encryptVault m (Cfg.file cfg) newv
     )
     (\(_ :: SomeException) -> putStrLn "could not rotate SSH key")
@@ -122,7 +118,7 @@ genSSHFilename cfg h u' = do
 
 
 chmodSSHFile :: ToSBytes a => a -> IO ()
-chmodSSHFile = chmodFile ("600" :: String)
+chmodSSHFile = chmodF ("600" :: String)
 
 
 genSSHKeyU :: Cfg.Config -> AESMasterKey -> HostName -> User -> IO SSHKey
@@ -165,10 +161,10 @@ initVault cfg = catch (
             let d' = toText $ dir cfg
                 ks = toText $ keystore cfg
             procD "mkdir" ["-p", d']
-            chmodDir ("700" :: String) d'
+            chmodD ("700" :: String) d'
             -- procD "chown" [" ", d]
             procD "mkdir" ["-p", ks] -- do not assume that ks is a subdirectory of d
-            chmodDir ("700" :: String) ks
+            chmodD ("700" :: String) ks
             -- procD "chown" [" ", d]
             encryptVault pw v Vault {vault = []}
     )
@@ -210,19 +206,6 @@ sshAdd cfg m h u' = catch (
         return ()
     )
     (\(_ :: SomeException) -> putStrLn $ "failed to ssh-add key for " ++ u' ++ "@" ++ h)
-{-
-        _ <- return $ map
-            (\ s' -> when (substring s' (show e')) (printf (s % "\n") (toText s') :: IO ()))
-            [ "host not found"
-            , "user not found"
-            , "could not decode SSH key passphrase, probably wrong master password"
-            , "vault entry for user inconsistent"
-            , "vault entry for host inconsistent"
-            ]
-        --return ()
-        printf (s%"\n") (toText $ show e')
--}
-
 
 
 insertSSHKey :: InsertMode -> Cfg.Config -> AESMasterKey -> String -> IO ()
@@ -240,7 +223,6 @@ insertSSHKey mode cfg m s' = do
             Insert  -> do
                 putStrLn "failed to insert vault entry (duplicate)"
                 error "exit"
-
 
 
 b64EncryptSSHKeyPassphrase :: IO ()
@@ -281,7 +263,9 @@ getAuthorizedKeys cfg m h un = do
       (ExitSuccess  , o', e') -> do
         unless (null e') $ putStrLn $ "LOG :" ++ show e'
         return o'
-  return $ T.splitOn "\n" (toText a_k)
+  case T.splitOn "\n" (toText a_k) of
+    [] -> error "retrieved empty authorized_keys file"
+    ks -> return ks
 
 
 writeUserSSHKeys :: AESMasterKey -> Vault -> HostName -> UserName -> IO ([SSHKey], [String], [String])
@@ -304,9 +288,9 @@ writeUserSSHKeys m v h un = do
                 ph' <- decryptAES m' s0
                 return $ toString ph'
           B.writeFile priv (toBytes $ key_priv sk)
-          chmodFile ("600" :: String) (priv :: String)
+          chmodF ("600" :: String) (priv :: String)
           _ <- procEC $ "ssh-keygen -f " ++ priv ++ " -y -P " ++ ph ++ " > " ++ pub
-          chmodFile ("644" :: String) (pub :: String)
+          chmodF ("644" :: String) (pub :: String)
           return ExitSuccess
           )
           (\(e' :: SomeException) -> do
