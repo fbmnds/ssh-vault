@@ -10,7 +10,9 @@ homepage: https://github.com/githubuser/ssh-vault#readme
 category: Web
 build-type: Simple
 extra-source-files:
+    cbits/*.h
     README.md
+
 
 library
     exposed-modules:
@@ -47,6 +49,14 @@ library
         time -any,
         process -any,
         containers -any
+    C-Sources:
+        cbits/ssh-add.c
+    CC-Options:
+        -Wall -Wextra -pedantic -std=c99
+    Include-Dirs:
+        cbits
+    Includes:
+        ssh-add.h
 
 
 executable ssh-vault

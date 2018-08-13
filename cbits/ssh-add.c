@@ -11,7 +11,15 @@
 #include <string.h>
 #include <string.h>
 
-int ssh_add(int ac, char *av[], char *expect, char *answer)
+#include <HsFFI.h>
+
+//#include "ssh-add.h"
+
+// $ gcc -c -Wall -Werror -fpic ssh-add.c
+// $ gcc -shared -o ssh-add.so ssh-add.o
+
+
+int ssh_add(char *duration, char *path, char *expect, char *answer)
 {
 int fdm, fds;
 int rc;
@@ -131,7 +139,7 @@ else
 {
 struct termios slave_orig_term_settings; // Saved terminal settings
 struct termios new_term_settings; // Current terminal settings
-
+void cfmakeraw(struct termios *termios_p);
   // CHILD
 
   // Close the master side of the PTY
@@ -166,17 +174,16 @@ struct termios new_term_settings; // Current terminal settings
 
   // Execution of the program
   {
-  char **child_av;
-  int i;
+  char **av;
 
     // Build the command line
-    child_av = (char **)malloc(ac * sizeof(char *));
-    for (i = 1; i < ac; i ++)
-    {
-      child_av[i - 1] = strdup(av[i]);
-    }
-    child_av[i - 1] = NULL;
-    rc = execvp(child_av[0], child_av);
+    av = (char **)malloc(5 * sizeof(char *));
+    av[0] = "ssh-add";
+    av[1] = "-t";
+    av[2] = strdup(duration);
+    av[3] = strdup(path);
+    av[4] = NULL;
+    rc = execvp(av[0], av);
   }
 
   // if Error...
@@ -186,8 +193,9 @@ struct termios new_term_settings; // Current terminal settings
 return 0;
 } // ssh-add
 
+/*
 int main(int ac, char *av[])
 {
   exit(ssh_add(5,av,av[5],av[6]));
 }
-
+*/

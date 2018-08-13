@@ -1,6 +1,10 @@
+
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE CApiFFI #-}
+{-# LANGUAGE CPP #-}
 --{-# LANGUAGE PackageImports -#}
+
 module SSHVault.Common
   ( encryptAES
   , decryptAES
@@ -22,6 +26,7 @@ module SSHVault.Common
   , substring
   , prefix
   , getUTC
+  , ssh_add
   )
 
 where
@@ -52,7 +57,9 @@ import qualified Turtle.Prelude as Tu
 import qualified Turtle as Tu
 import           Turtle.Format
 
-
+-- import Foreign
+-- import Foreign.C.Types
+import Foreign.C.String
 
 getUTC :: IO String
 getUTC = show <$> Clock.getCurrentTime
@@ -186,3 +193,34 @@ execExp _ exp' ls = do
             (\ (_ :: SomeException) -> procD "rm" [fn] )
 
     -- TODO procD "expect" ["-f", fn] succeeds, but throws exception
+
+
+foreign import ccall "ssh_add.h"
+    ssh_add :: CString
+            -> CString
+            -> CString
+            -> CString
+            -> Int
+
+{-
+
+foreign import ccall "fork_exec_with_pty.h"
+    fork_exec_with_pty :: Int
+                       -> Int
+                       -> CInt
+                       -> CString
+                       -> Ptr CString
+                       -> Ptr CString
+                       -> Ptr Int
+                       -> IO Fd
+
+fork_exec_with_pty
+    ( HsInt sx
+    , HsInt sy
+    , int search
+    , const char *file
+    , char *const argv[]
+    , char *const env[]
+    , HsInt *child_pid
+)
+-}

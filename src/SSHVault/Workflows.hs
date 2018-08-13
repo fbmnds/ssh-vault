@@ -29,7 +29,7 @@ import SSHVault.Common
 
 import Control.Monad
 import Control.Exception (SomeException, catch)
-import Control.Concurrent (threadDelay)
+-- import Control.Concurrent (threadDelay)
 
 import Data.Set (fromList, intersection)
 import Data.Maybe (fromMaybe)

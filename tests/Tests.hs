@@ -13,11 +13,11 @@ import SSHVault.Workflows
 import SSHVault.Common
 
 import qualified Data.ByteString as B
--- import qualified Data.ByteString.Base64 as B64
+import qualified Data.ByteString.Base64 as B64
 import qualified Data.ByteArray as BA
 
 -- import Data.Text (splitOn)
-import Data.List (intercalate)
+-- import Data.List (intercalate)
 import Data.Maybe (fromMaybe)
 import Data.Aeson as JSON
 import Data.Aeson.Encode.Pretty (encodePretty)
@@ -25,12 +25,16 @@ import GHC.Generics
 
 import Test.QuickCheck
 
-import Control.Concurrent (threadDelay)
-import Control.Exception (SomeException, catch)
+-- import Control.Concurrent (threadDelay)
+import Control.Exception (SomeException, catch, bracket)
 import Control.Monad
-import System.Exit (ExitCode(..))
+-- import System.Exit (ExitCode(..))
 import qualified Turtle as Tu
 import Turtle.Format
+
+import Foreign
+import Foreign.C.Types
+import Foreign.C.String
 
 instance Arbitrary B.ByteString where arbitrary = B.pack <$> arbitrary
 instance CoArbitrary B.ByteString where coarbitrary = coarbitrary . B.unpack
@@ -144,9 +148,48 @@ test2 = do
 -- test3 : test key synchronization WIP
 
 test3 :: IO ()
-test3 =  do
+test3 = do
   (cfg,m,h,un) <- initTests
   rotateUserSSHKey cfg m h un
+
+
+
+
+
+-- test 4 : test FFI call to ssh-add
+
+test4 = do
+  (cfg,m,h,un) <- initTests
+  (v :: Vault) <- decryptVault m (Cfg.file cfg)
+  case filter (\ve -> h == host ve) $ vault v of
+              []   -> do putStrLn "host not found"; error "exit"
+              [ve] -> case filter (\u'' -> un == user u'') (users ve) of
+                  []   -> do putStrLn "user not found"; error "exit"
+                  [u''] -> do
+                      let (max', ph', fn) =
+                              ( maximum $ sshkeys u''
+                              , B64.decode . toBytes . phrase64 $ max'
+                              , key_file max'
+                              )
+                      ph <- case ph' of
+                          Left _ -> do
+                              putStrLn "could not decode SSH key passphrase, probably wrong master password"
+                              error "exit"
+                          Right x' -> decryptAES m x'
+                      d' <- newCString "5"
+                      p  <- newCString fn
+                      e' <- newCString "nter passphrase"
+                      a  <- newCString $ toString ph
+                      print $  ssh_add d' p e' a
+                      --execSSH (toKeyPhrase ph) ("ssh-add -t " ++ show (Cfg.ttl cfg) ++ " " ++ fn :: String)
+                  _ -> do putStrLn "vault entry for user inconsistent"; error "exit"
+              _ -> do putStrLn "vault entry for host inconsistent"; error "exit"
+  return ()
+
+
+
+
+
 
 -- | property check on string conversions (depricated)
 
@@ -199,6 +242,8 @@ initTests =  do
 
 main :: IO ()
 main = do
+  test4
+{-
   test0
   dcfg <- genTestConfig
   test1 dcfg
@@ -206,3 +251,4 @@ main = do
   test2
   test3
   quickCheck prop_scrubbedbytes
+-}
