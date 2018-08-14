@@ -11,6 +11,9 @@ import Data.Semigroup ((<>))
 import Options.Applicative
 import GHC.IO.Handle
 import System.IO
+import System.Process
+import Foreign.C.String
+import Control.Monad
 
 
 data Opts = Opts
@@ -32,6 +35,8 @@ data Command
 cli :: IO ()
 cli =
     do
+        principal <- newCString "root"
+        when (g_auth principal == 1) $ error "not authenticated"
         cfg <- Cfg.genDefaultConfig
         (opts :: Opts) <- execParser optsParser
         case optCommand opts of

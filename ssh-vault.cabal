@@ -51,13 +51,17 @@ library
         containers -any
     C-Sources:
         cbits/ssh-add.c
+        cbits/g_auth.c
     CC-Options:
         -Wall -Wextra -pedantic -std=c99
     Include-Dirs:
         cbits
     Includes:
         ssh-add.h
-
+        g_auth.h
+    extra-libraries:
+        pam
+        pam_misc
 
 executable ssh-vault
     main-is: Main.hs

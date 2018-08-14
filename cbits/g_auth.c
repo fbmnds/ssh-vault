@@ -1,39 +1,28 @@
 /*
-  This program was contributed by Shane Watts
-  [modifications by AGM and kukuk]
 
-  You need to add the following (or equivalent) to the
-  /etc/pam.d/check_user file:
+  http://www.linux-pam.org/Linux-PAM-html/adg-example.html
+
+  /etc/pam.d/ssh_vault:
   # check authorization
-  auth       required     pam_unix.so
-  account    required     pam_unix.so
+  auth       required     pam_google_authenticator.so
+  account    required     pam_permit.so
+
+  $ gcc -c -Wall -Werror -fpic g_auth.c
+  $ gcc -shared -o g_auth.so g_auth.o
+
  */
 
-#include <security/pam_appl.h>
-#include <security/pam_misc.h>
-#include <stdio.h>
 
-static struct pam_conv conv = {
-    misc_conv,
-    NULL
-};
 
-int main(int argc, char *argv[])
+#include "g_auth.h"
+
+
+int g_auth(char *user)
 {
     pam_handle_t *pamh=NULL;
     int retval;
-    const char *user="nobody";
 
-    if(argc == 2) {
-        user = argv[1];
-    }
-
-    if(argc > 2) {
-        fprintf(stderr, "Usage: check_user [username]\n");
-        exit(1);
-    }
-
-    retval = pam_start("check_user", user, &conv, &pamh);
+    retval = pam_start("ssh-vault", user, &conv, &pamh);
 
     if (retval == PAM_SUCCESS)
         retval = pam_authenticate(pamh, 0);    /* is user really user? */

@@ -1,19 +1,6 @@
-#define _XOPEN_SOURCE 600
-#include <stdlib.h>
-#include <fcntl.h>
-#include <errno.h>
-#include <unistd.h>
-#include <stdio.h>
-#define __USE_BSD
-#include <termios.h>
-#include <sys/select.h>
-#include <sys/ioctl.h>
-#include <string.h>
-#include <string.h>
 
-#include <HsFFI.h>
 
-//#include "ssh-add.h"
+#include "ssh-add.h"
 
 // $ gcc -c -Wall -Werror -fpic ssh-add.c
 // $ gcc -shared -o ssh-add.so ssh-add.o

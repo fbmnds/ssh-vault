@@ -27,6 +27,7 @@ module SSHVault.Common
   , prefix
   , getUTC
   , ssh_add
+  , g_auth
   )
 
 where
@@ -195,6 +196,11 @@ execExp _ exp' ls = do
     -- TODO procD "expect" ["-f", fn] succeeds, but throws exception
 
 
+foreign import ccall "g_auth.h"
+    g_auth :: CString
+          -> Int
+
+
 foreign import ccall "ssh_add.h"
     ssh_add :: CString
             -> CString
@@ -202,25 +208,4 @@ foreign import ccall "ssh_add.h"
             -> CString
             -> Int
 
-{-
 
-foreign import ccall "fork_exec_with_pty.h"
-    fork_exec_with_pty :: Int
-                       -> Int
-                       -> CInt
-                       -> CString
-                       -> Ptr CString
-                       -> Ptr CString
-                       -> Ptr Int
-                       -> IO Fd
-
-fork_exec_with_pty
-    ( HsInt sx
-    , HsInt sy
-    , int search
-    , const char *file
-    , char *const argv[]
-    , char *const env[]
-    , HsInt *child_pid
-)
--}
