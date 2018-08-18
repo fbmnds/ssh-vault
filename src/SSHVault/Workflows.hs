@@ -45,6 +45,10 @@ import qualified Data.Text as T
 --import System.IO
 import System.Exit (ExitCode(..))
 
+import Foreign
+import Foreign.C.Types
+import Foreign.C.String
+
 import qualified Turtle as Tu
 import Turtle.Prelude (testfile)
 
@@ -182,30 +186,35 @@ printVault cfg = catch (
 
 
 sshAdd :: Cfg.Config -> AESMasterKey -> HostName -> UserName -> IO ()
-sshAdd cfg m h u' = catch (
+sshAdd cfg m h un = catch (
     do
         (v :: Vault) <- decryptVault m (file cfg)
         case filter (\ve -> h == host ve) $ vault v of
-            []   -> do putStrLn "host not found"; error "exit"
-            [ve] -> case filter (\u'' -> u' == user u'') (users ve) of
-                []   -> do putStrLn "user not found"; error "exit"
-                [u''] -> do
-                    let (max', ph', fn) =
-                            ( maximum $ sshkeys u''
-                            , B64.decode . toBytes . phrase64 $ max'
-                            , key_file max'
-                            )
-                    ph <- case ph' of
-                        Left _ -> do
-                            putStrLn "could not decode SSH key passphrase, probably wrong master password"
-                            error "exit"
-                        Right x' -> decryptAES m x'
-                    execSSH (toKeyPhrase ph) ("ssh-add -t " ++ show (Cfg.ttl cfg) ++ " " ++ fn :: String)
-                _ -> do putStrLn "vault entry for user inconsistent"; error "exit"
-            _ -> do putStrLn "vault entry for host inconsistent"; error "exit"
+                      []   -> do putStrLn "host not found"; error "exit"
+                      [ve] -> case filter (\u'' -> un == user u'') (users ve) of
+                          []   -> do putStrLn "user not found"; error "exit"
+                          [u''] -> do
+                              let (max', ph', fn) =
+                                      ( maximum $ sshkeys u''
+                                      , B64.decode . toBytes . phrase64 $ max'
+                                      , key_file max'
+                                      )
+                              ph <- case ph' of
+                                  Left _ -> do
+                                      putStrLn "could not decode SSH key passphrase, probably wrong master password"
+                                      error "exit"
+                                  Right x' -> decryptAES m x'
+                              d' <- newCString $ show $ Cfg.ttl cfg
+                              p  <- newCString fn
+                              e' <- newCString "nter passphrase"
+                              a  <- newCString $ toString ph
+                              print $  ssh_add d' p e' a
+                              --execSSH (toKeyPhrase ph) ("ssh-add -t " ++ show (Cfg.ttl cfg) ++ " " ++ fn :: String)
+                          _ -> do putStrLn "vault entry for user inconsistent"; error "exit"
+                      _ -> do putStrLn "vault entry for host inconsistent"; error "exit"
         return ()
     )
-    (\(_ :: SomeException) -> putStrLn $ "failed to ssh-add key for " ++ u' ++ "@" ++ h)
+    (\(_ :: SomeException) -> putStrLn $ "failed to ssh-add key for " ++ un ++ "@" ++ h)
 
 
 insertSSHKey :: InsertMode -> Cfg.Config -> AESMasterKey -> String -> IO ()

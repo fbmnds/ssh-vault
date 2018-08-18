@@ -12,9 +12,20 @@
 
  */
 
+#include <security/pam_appl.h>
+#include <security/pam_misc.h>
+#include <stdio.h>
+
+#include <HsFFI.h>
 
 
 #include "g_auth.h"
+
+
+static struct pam_conv conv = {
+    misc_conv,
+    NULL
+};
 
 
 int g_auth(char *user)

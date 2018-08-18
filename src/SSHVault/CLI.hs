@@ -35,8 +35,8 @@ data Command
 cli :: IO ()
 cli =
     do
-        principal <- newCString "root"
-        when (g_auth principal == 1) $ error "not authenticated"
+        --principal <- newCString "root"
+        --when (g_auth principal == 1) $ error "not authenticated"
         cfg <- Cfg.genDefaultConfig
         (opts :: Opts) <- execParser optsParser
         case optCommand opts of
