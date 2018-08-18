@@ -206,6 +206,6 @@ foreign import ccall "ssh_add.h"
             -> CString
             -> CString
             -> CString
-            -> Int
+            -> IO Int
 
 

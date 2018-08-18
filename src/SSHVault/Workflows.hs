@@ -42,7 +42,7 @@ import qualified Data.ByteArray as BA
 import qualified Data.Text as T
 --import Data.Text (split)
 
---import System.IO
+import System.IO
 import System.Exit (ExitCode(..))
 
 import Foreign
@@ -186,35 +186,54 @@ printVault cfg = catch (
 
 
 sshAdd :: Cfg.Config -> AESMasterKey -> HostName -> UserName -> IO ()
-sshAdd cfg m h un = catch (
-    do
+sshAdd cfg m h un = catch
+    (do
         (v :: Vault) <- decryptVault m (file cfg)
         case filter (\ve -> h == host ve) $ vault v of
-                      []   -> do putStrLn "host not found"; error "exit"
-                      [ve] -> case filter (\u'' -> un == user u'') (users ve) of
-                          []   -> do putStrLn "user not found"; error "exit"
-                          [u''] -> do
-                              let (max', ph', fn) =
-                                      ( maximum $ sshkeys u''
-                                      , B64.decode . toBytes . phrase64 $ max'
-                                      , key_file max'
-                                      )
-                              ph <- case ph' of
-                                  Left _ -> do
-                                      putStrLn "could not decode SSH key passphrase, probably wrong master password"
-                                      error "exit"
-                                  Right x' -> decryptAES m x'
-                              d' <- newCString $ show $ Cfg.ttl cfg
-                              p  <- newCString fn
-                              e' <- newCString "nter passphrase"
-                              a  <- newCString $ toString ph
-                              print $  ssh_add d' p e' a
-                              --execSSH (toKeyPhrase ph) ("ssh-add -t " ++ show (Cfg.ttl cfg) ++ " " ++ fn :: String)
-                          _ -> do putStrLn "vault entry for user inconsistent"; error "exit"
-                      _ -> do putStrLn "vault entry for host inconsistent"; error "exit"
+            [] -> do
+                putStrLn "host not found"
+                error "exit"
+            [ve] -> case filter (\u'' -> un == user u'') (users ve) of
+                [] -> do
+                    putStrLn "user not found"
+                    error "exit"
+                [u''] -> do
+                    let (max', ph', fn) =
+                            ( maximum $ sshkeys u''
+                            , B64.decode . toBytes . phrase64 $ max'
+                            , key_file max'
+                            )
+                    ph <- case ph' of
+                        Left _ -> do
+                            putStrLn
+                                "could not decode SSH key passphrase, probably wrong master password"
+                            error "exit"
+                        Right x' -> decryptAES m x'
+                    d' <- newCString $ show $ Cfg.ttl cfg
+                    p  <- newCString fn
+                    e' <- newCString "nter passphrase"
+                    a  <- newCString $ toString ph
+                    _  <- ssh_add d' p e' a
+                    (ec, o, e'') <- procEC "ssh-add -L"
+                    case ec of
+                        ExitFailure _ -> error "LOG : FFI call to ssh-add failed"
+                        ExitSuccess   ->
+                            if substring fn o then
+                                return ()
+                            else do
+                                putStrLn $ "LOG: " ++ e''
+                                error "LOG : FFI call to ssh-add failed"
+                _ -> do
+                    putStrLn "vault entry for user inconsistent"
+                    error "exit"
+            _ -> do
+                putStrLn "vault entry for host inconsistent"
+                error "exit"
         return ()
     )
-    (\(_ :: SomeException) -> putStrLn $ "failed to ssh-add key for " ++ un ++ "@" ++ h)
+    (\(_ :: SomeException) ->
+        putStrLn $ "failed to ssh-add key for " ++ un ++ "@" ++ h
+    )
 
 
 insertSSHKey :: InsertMode -> Cfg.Config -> AESMasterKey -> String -> IO ()

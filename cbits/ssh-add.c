@@ -13,7 +13,6 @@
 
 #include <HsFFI.h>
 
-#include "ssh-add.h"
 
 // $ gcc -c -Wall -Werror -fpic ssh-add.c
 // $ gcc -shared -o ssh-add.so ssh-add.o
@@ -122,7 +121,7 @@ fd_set fd_in;
           {
             if (errno == 5)
             {
-              exit(0);
+              return 0;
             }
             else
             {
@@ -184,6 +183,9 @@ void cfmakeraw(struct termios *termios_p);
     av[3] = strdup(path);
     av[4] = NULL;
     rc = execvp(av[0], av);
+    for (int i=0; i < 4; i++)
+      free(av[i]);
+    free(av);
   }
 
   // if Error...

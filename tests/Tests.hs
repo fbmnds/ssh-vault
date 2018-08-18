@@ -28,7 +28,8 @@ import Test.QuickCheck
 -- import Control.Concurrent (threadDelay)
 import Control.Exception (SomeException, catch, bracket)
 import Control.Monad
--- import System.Exit (ExitCode(..))
+import System.Exit (ExitCode(..))
+
 import qualified Turtle as Tu
 import Turtle.Format
 
@@ -160,33 +161,8 @@ test3 = do
 
 test4 = do
   (cfg,m,h,un) <- initTests
-  (v :: Vault) <- decryptVault m (Cfg.file cfg)
-  case filter (\ve -> h == host ve) $ vault v of
-              []   -> do putStrLn "host not found"; error "exit"
-              [ve] -> case filter (\u'' -> un == user u'') (users ve) of
-                  []   -> do putStrLn "user not found"; error "exit"
-                  [u''] -> do
-                      let (max', ph', fn) =
-                              ( maximum $ sshkeys u''
-                              , B64.decode . toBytes . phrase64 $ max'
-                              , key_file max'
-                              )
-                      ph <- case ph' of
-                          Left _ -> do
-                              putStrLn "could not decode SSH key passphrase, probably wrong master password"
-                              error "exit"
-                          Right x' -> decryptAES m x'
-                      d' <- newCString "5"
-                      p  <- newCString fn
-                      e' <- newCString "nter passphrase"
-                      a  <- newCString $ toString ph
-                      print $  ssh_add d' p e' a
-                      --execSSH (toKeyPhrase ph) ("ssh-add -t " ++ show (Cfg.ttl cfg) ++ " " ++ fn :: String)
-                  _ -> do putStrLn "vault entry for user inconsistent"; error "exit"
-              _ -> do putStrLn "vault entry for host inconsistent"; error "exit"
+  sshAdd (cfg { Cfg.ttl = 5 }) m h un
   return ()
-
-
 
 
 
