@@ -152,8 +152,9 @@ test3 :: IO ()
 test3 = do
   (cfg,m,h,un) <- initTests
   rotateUserSSHKey cfg m h un
-
-
+  r <- confirmSSHAccess  cfg m h un
+  if r == "Access failed" then error "--- ERR, test3 : SSH key rotation failed"
+  else putStrLn "+++, OK test3 : successful SSH key rotation"
 
 
 
@@ -163,7 +164,6 @@ test4 = do
   (cfg,m,h,un) <- initTests
   sshAdd (cfg { Cfg.ttl = 5 }) m h un
   return ()
-
 
 
 
@@ -218,13 +218,11 @@ initTests =  do
 
 main :: IO ()
 main = do
-  test4
-{-
   test0
   dcfg <- genTestConfig
   test1 dcfg
   shellD $ "rm " ++ Cfg.keystore dcfg ++ "/*"
   test2
   test3
+  test4
   quickCheck prop_scrubbedbytes
--}
