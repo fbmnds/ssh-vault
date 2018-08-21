@@ -42,15 +42,14 @@ import qualified Data.ByteArray as BA
 import qualified Data.Text as T
 --import Data.Text (split)
 
-import System.IO
+--import System.IO
 import System.Exit (ExitCode(..))
+import System.Directory
 
-import Foreign
-import Foreign.C.Types
+--import Foreign
+--import Foreign.C.Types
 import Foreign.C.String
 
-import qualified Turtle as Tu
-import Turtle.Prelude (testfile)
 
 
 data InsertMode
@@ -96,7 +95,7 @@ rotateUserSSHKey cfg m h un = catch (
         B.writeFile new_a_k_file .toBytes $ intercalate "\n" new_a_k
         -- use old key
         -- shellD ("ssh-add -L" :: String)
-        sshAdd (cfg { Cfg.ttl = 1 }) m h un
+        sshAdd (cfg { Cfg.ttl = 3 }) m h un
         -- shellD ("ssh-add -L" :: String)
         -- use old key
         r <- procEC cmd
@@ -158,7 +157,7 @@ initVault :: Cfg.Config -> IO ()
 initVault cfg = catch (
     do
         let v  = file cfg
-        b' <- testfile (Tu.fromString v)
+        b' <- doesFileExist v
         if b' then print ("vault file exists. " ++ v)
         else do
             pw  <- getAESMasterKeyU

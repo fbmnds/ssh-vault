@@ -14,8 +14,6 @@ module SSHVault.Common
   , procEC
   , procD
   , shellD
-  , execSSH
-  , execExp
   , rand1000
   , randS
   , chmodF
@@ -33,9 +31,9 @@ module SSHVault.Common
 where
 
 import           SSHVault.SBytes
-import qualified SSHVault.Vault.Config as Cfg
+--import qualified SSHVault.Vault.Config as Cfg
 
-import Data.List (intercalate)
+--import Data.List (intercalate)
 --import qualified Data.Text as T
 --import qualified Data.ByteString as B
 --import qualified Data.ByteString.Lazy as BL
@@ -54,9 +52,6 @@ import           System.Random
 import           System.Process
 import           System.Exit (ExitCode(..))
 
-import qualified Turtle.Prelude as Tu
-import qualified Turtle as Tu
-import           Turtle.Format
 
 -- import Foreign
 -- import Foreign.C.Types
@@ -143,57 +138,22 @@ procEC cmd = readCreateProcessWithExitCode (shell cmd) []
 
 procD :: ToSBytes a => a -> [a] -> IO ()
 procD a b = do
-    ec <- Tu.proc (toText a) (map toText b) Tu.empty
+    (ec,_,_) <- procEC $ toString a ++ " " ++ unwords (map toString b)
     case ec of
-        Tu.ExitFailure _ -> Tu.die $ Tu.format (s % s % w %s) "failed to execute: " (toText a) (map toText b) "\n"
+        ExitFailure _ -> error $ "failed to execute: " ++ toString a ++ unwords (map toString b) ++ "\n"
         _ -> return ()
 
 shellD :: ToSBytes a => a -> IO ()
-shellD a = do
-    ec <- Tu.shell (toText a) Tu.empty
-    case ec of
-        Tu.ExitFailure _ -> Tu.die $ Tu.format (s % s %s) "failed to execute: " (toText a) "\n"
-        _ -> return ()
+shellD a = procD a []
 
 chmodF :: (ToSBytes a, ToSBytes b) => a -> b -> IO ()
-chmodF m fn = procD ("chmod" :: Tu.Text) [toText m, toText fn]
+chmodF m fn = procD "chmod" [toString m, toString fn]
 
 chmodD :: (ToSBytes a, ToSBytes b) => a -> b -> IO ()
-chmodD m fn = procD ("chmod" :: Tu.Text) [toText m, toText fn]
+chmodD m fn = procD "chmod" [toString m, toString fn]
 
 chmodD_R :: (ToSBytes a, ToSBytes b) => a -> b -> IO ()
-chmodD_R m fn = procD ("chmod" :: Tu.Text) ["-R", toText m, toText fn]
-
-
-execSSH :: KeyPhrase -> String -> IO ()
-execSSH ph sp = catch
-    (readCreateProcess (shell cmd) [] >>= putStr)
-    (\ (_ :: SomeException) -> do
-        putStrLn ("could not execute expect script" :: String)
-        error "exit")
-    where
-        (cmd :: String) = "bash -c \"expect << EOF\n"
-         ++ "spawn " ++ sp ++ "\n"
-         ++ "expect \\\"Enter passphrase\\\"\n"
-         ++ "send \\\"" ++ toString ph ++ "\\r\\\"\n"
-         ++ "expect eof\n"
-         ++ "EOF\""
-
-
-execExp :: Cfg.Config -> String -> [String] -> IO ()
-execExp _ exp' ls = do
-        r3 <- rand1000 3
-        let fn = "/dev/shm/" ++ exp' ++ "-" ++ intercalate "-" (map show r3) ++ ".exp"
-        catch ( do
-            _ <- procD "touch" [fn]
-            _ <- chmodF ("600" :: String) fn
-            _ <- writeFile fn (intercalate "\n" ls)
-            _ <- procD "expect" ["-f", fn]
-            _ <- procD "rm" [fn]
-            return () )
-            (\ (_ :: SomeException) -> procD "rm" [fn] )
-
-    -- TODO procD "expect" ["-f", fn] succeeds, but throws exception
+chmodD_R m fn = procD "chmod" ["-R", toString m, toString fn]
 
 
 foreign import ccall "g_auth.h"

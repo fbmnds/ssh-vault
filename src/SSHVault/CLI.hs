@@ -11,9 +11,9 @@ import Data.Semigroup ((<>))
 import Options.Applicative
 import GHC.IO.Handle
 import System.IO
-import System.Process
-import Foreign.C.String
-import Control.Monad
+--import System.Process
+--import Foreign.C.String
+--import Control.Monad
 
 
 data Opts = Opts

@@ -13,7 +13,7 @@ import SSHVault.Workflows
 import SSHVault.Common
 
 import qualified Data.ByteString as B
-import qualified Data.ByteString.Base64 as B64
+--import qualified Data.ByteString.Base64 as B64
 import qualified Data.ByteArray as BA
 
 -- import Data.Text (splitOn)
@@ -26,16 +26,20 @@ import GHC.Generics
 import Test.QuickCheck
 
 -- import Control.Concurrent (threadDelay)
-import Control.Exception (SomeException, catch, bracket)
+import Control.Exception
+  (SomeException
+  , catch
+--  , bracket
+  )
 import Control.Monad
-import System.Exit (ExitCode(..))
+--import System.Exit (ExitCode(..))
+import System.Directory
 
-import qualified Turtle as Tu
-import Turtle.Format
-
+{-
 import Foreign
 import Foreign.C.Types
 import Foreign.C.String
+-}
 
 instance Arbitrary B.ByteString where arbitrary = B.pack <$> arbitrary
 instance CoArbitrary B.ByteString where coarbitrary = coarbitrary . B.unpack
@@ -77,8 +81,8 @@ test0 = catch (do
 test1 :: Cfg.Config -> IO ()
 test1 dcfg = do
   let debug = False
-  h <- Tu.home
-  let fn = toString (format fp h) ++ "/.ssh/vault" ++ ".NEW"
+  h <- getHomeDirectory
+  let fn = h ++ "/.ssh/vault" ++ ".NEW"
       m = genAESKey $ toMasterKey "0123456789"
       sk = [SSHKey
               (toKeyPhrase64 "root*box1***")
@@ -192,8 +196,7 @@ prop_scrubbedbytes t =
 
 genTestConfig :: IO Cfg.Config
 genTestConfig = do
-  vdir' <- Tu.pwd
-  let vdir = toString $ format fp vdir'
+  vdir <- getCurrentDirectory
   return Cfg.Config {
         Cfg.dir      = vdir ++ "/tests/data"
       , Cfg.file     = vdir ++ "/tests/data/.vault"
@@ -223,6 +226,6 @@ main = do
   test1 dcfg
   shellD $ "rm " ++ Cfg.keystore dcfg ++ "/*"
   test2
-  test3
+--  test3
   test4
   quickCheck prop_scrubbedbytes

@@ -17,17 +17,20 @@ extra-source-files:
 library
     exposed-modules:
         SSHVault.Common
+        SSHVault.CLI
         SSHVault.Vault
         SSHVault.Vault.Config
         SSHVault.Vault.Queue
         SSHVault.Workflows
         SSHVault.SBytes
-        SSHVault.CLI
+    cc-options: -Wall -Wextra -pedantic -std=c99
+    c-sources:
+        cbits/ssh-add.c
+        cbits/g_auth.c
     hs-source-dirs: src
     default-language: Haskell2010
     build-depends:
         base >=4.7 && <5,
-        turtle -any,
         crypto-simple >=0.1.0.0,
         text -any,
         bytestring -any,
@@ -48,7 +51,8 @@ library
         optparse-applicative -any,
         time -any,
         process -any,
-        containers -any
+        containers -any,
+        directory -any
     C-Sources:
         cbits/ssh-add.c
         cbits/g_auth.c
@@ -63,7 +67,11 @@ library
         pam
         pam_misc
 
+
 executable ssh-vault
+    c-sources:
+        cbits/ssh-add.c
+        cbits/ssh-add.h
     main-is: Main.hs
     hs-source-dirs: . src . src
     other-modules:
@@ -82,7 +90,6 @@ executable ssh-vault
     build-depends:
         ssh-vault -any,
         base >=4.7 && <5,
-        turtle -any,
         crypto-simple >=0.1.0.0,
         text -any,
         bytestring -any,
@@ -103,7 +110,8 @@ executable ssh-vault
         optparse-applicative -any,
         time -any,
         process -any,
-        containers -any
+        containers -any,
+        directory -any
 
 test-suite ssh-vault-tests
     type: exitcode-stdio-1.0
@@ -123,7 +131,6 @@ test-suite ssh-vault-tests
     build-depends:
         ssh-vault -any,
         base >=4.7 && <5,
-        turtle -any,
         crypto-simple >=0.1.0.0,
         text -any,
         bytestring -any,
@@ -144,4 +151,5 @@ test-suite ssh-vault-tests
         optparse-applicative -any,
         time -any,
         process -any,
-        containers -any
+        containers -any,
+        directory -any

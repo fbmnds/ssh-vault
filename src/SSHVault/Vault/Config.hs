@@ -5,13 +5,11 @@ module SSHVault.Vault.Config
   )
   where
 
-import           SSHVault.SBytes
 
 import qualified Data.Aeson as JSON
 import           GHC.Generics
 
-import qualified Turtle as Tu
-import           Turtle.Format
+import System.Directory
 
 
 data Config =
@@ -27,10 +25,10 @@ instance JSON.ToJSON Config
 
 genDefaultConfig :: IO Config
 genDefaultConfig = do
-  hdir <- Tu.home
+  hdir <- getHomeDirectory
   return Config {
-        dir = toString (format fp hdir) ++ "/.vault"
-      , file = toString (format fp hdir) ++ "/.vault/vault"
-      , keystore = toString (format fp hdir) ++ "/.vault/STORE"
+        dir = hdir ++ "/.vault"
+      , file = hdir ++ "/.vault/vault"
+      , keystore = hdir ++ "/.vault/STORE"
       , ttl = 90
       }
