@@ -209,6 +209,7 @@ genTestConfig = do
 initTests :: IO (Cfg.Config, AESMasterKey, HostName, UserName)
 initTests =  do
   cfg <- Cfg.genDefaultConfig
+  procD "cp" [Cfg.file cfg, Cfg.file cfg ++ ".1"]
   tcfg' <- B.readFile $ Cfg.dir cfg ++ "/test.json"
   (tcfg :: TestConfig) <- return
     . fromMaybe (error "failed to JSON.decode in test2")

@@ -32,7 +32,7 @@ import           GHC.Generics
 
 newtype MasterKey    = MasterKey    { getMasterKey    :: BA.ScrubbedBytes } deriving (Show, Generic, Eq)
 newtype AESMasterKey = AESMasterKey { getAESMasterKey :: BA.ScrubbedBytes } deriving (Show, Generic, Eq)
-newtype KeyPhrase   = KeyPhrase   { getKeyPhrase   :: BA.ScrubbedBytes } deriving (Show, Generic, Eq)
+newtype KeyPhrase    = KeyPhrase    { getKeyPhrase    :: BA.ScrubbedBytes } deriving (Show, Generic, Eq)
 
 --type KeyPhrase64 = String
 newtype KeyPhrase64 =
