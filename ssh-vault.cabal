@@ -52,7 +52,8 @@ library
         time -any,
         process -any,
         containers -any,
-        directory -any
+        directory -any,
+        hashtables -any
     C-Sources:
         cbits/ssh-add.c
         cbits/g_auth.c
@@ -111,7 +112,8 @@ executable ssh-vault
         time -any,
         process -any,
         containers -any,
-        directory -any
+        directory -any,
+        hashtables -any
 
 test-suite ssh-vault-tests
     type: exitcode-stdio-1.0
@@ -152,4 +154,5 @@ test-suite ssh-vault-tests
         time -any,
         process -any,
         containers -any,
-        directory -any
+        directory -any,
+        hashtables -any

@@ -173,6 +173,18 @@ test4 = do
   else putStrLn "+++, OK test4 : successful purging SSH keys"
 
 
+
+
+-- test5 : change vault password
+
+test5 :: IO ()
+test5 = do
+  (cfg,m,_,_) <- initTests
+  let m2 = genAESKey $ toMasterKey "abc0123456789"
+  changeAESMasterKey cfg m m2
+
+
+
 -- | property check on string conversions (depricated)
 
 prop_scrubbedbytes :: B.ByteString -> Property
@@ -229,6 +241,7 @@ main = do
   test1 dcfg
   shellD $ "rm " ++ Cfg.keystore dcfg ++ "/*"
   test2
-  test3
-  test4
+  --test3
+  --test4
+  test5
   quickCheck prop_scrubbedbytes

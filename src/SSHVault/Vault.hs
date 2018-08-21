@@ -2,7 +2,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE ScopedTypeVariables #-}
---{-# LANGUAGE DeriveGeneric #-}
 
 module SSHVault.Vault
     (
@@ -15,6 +14,9 @@ module SSHVault.Vault
     , updateUsers
     , updateVaultEntry
     , updateVault
+    , toVaultHT
+    , getSSHKeysHT
+    , modifySSHKeysHT
     )
 where
 
@@ -26,6 +28,8 @@ import qualified Data.ByteString as B
 import qualified Data.ByteString.Base64 as B64
 import qualified Data.Aeson as JSON
 import           Data.Maybe (fromMaybe)
+import qualified Data.HashTable.ST.Basic as HT
+import           Control.Monad.ST
 
 --import Control.Exception (SomeException, catch)
 
@@ -79,3 +83,34 @@ encryptVault k fn v =
   encryptAES k (B64.encode . toBytes $ JSON.encode v)
   >>= \ c' -> B.writeFile fn (toBytes c')
   >> chmodF ("600" :: String) fn
+
+
+toHostHT :: VaultEntry -> ST s (HostHT s)
+toHostHT ve = do
+  ht <- HT.new
+  mapM_ (\u -> HT.insert ht (user u) (sshkeys u)) (getUsers (Vault { vault = [ve] }) (host ve))
+  return ht
+
+toVaultHT :: Vault -> ST s (VaultHT s)
+toVaultHT v = do
+  ht <- HT.new
+  mapM_ (\ve -> do h <- toHostHT ve; HT.insert ht (host ve) h) (vault v)
+  return ht
+
+getSSHKeysHT :: VaultHT s -> HostName -> UserName -> ST s (Maybe [SSHKey])
+getSSHKeysHT vst h un = do
+  hst <- HT.lookup vst h
+  case hst of
+    Nothing   -> return Nothing
+    Just hst' -> HT.lookup hst' un
+
+modifySSHKeysHT :: VaultHT s -> HostName -> UserName -> ([SSHKey] -> [SSHKey]) -> ST s ()
+modifySSHKeysHT vst h un f = do
+  hst <- HT.lookup vst h
+  case hst of
+    Nothing   -> return ()
+    Just hst' -> do
+      kst <- HT.lookup hst' un
+      case kst of
+        Nothing   -> return ()
+        Just kst' -> HT.insert hst' un (f kst')

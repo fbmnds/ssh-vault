@@ -9,6 +9,8 @@ module SSHVault.SBytes
     ( Vault (..)
     , VaultEntry (..)
     , User (..)
+    , VaultHT
+    , HostHT
     , HostName
     , HostData (..)
     , UserName
@@ -16,6 +18,7 @@ module SSHVault.SBytes
     , MasterKey (..)
     , AESMasterKey (..)
     , KeyPhrase (..)
+    , KeyPhrase64 (..)
     , ToSBytes (..)
     )
 where
@@ -30,11 +33,18 @@ import qualified Data.ByteString.Lazy.UTF8 as CLU
 import qualified Data.Aeson as JSON
 import           GHC.Generics
 
+import           Data.HashTable.ST.Basic
+--import           Control.Monad.ST
+
 newtype MasterKey    = MasterKey    { getMasterKey    :: BA.ScrubbedBytes } deriving (Show, Generic, Eq)
 newtype AESMasterKey = AESMasterKey { getAESMasterKey :: BA.ScrubbedBytes } deriving (Show, Generic, Eq)
-newtype KeyPhrase    = KeyPhrase    { getKeyPhrase    :: BA.ScrubbedBytes } deriving (Show, Generic, Eq)
 
---type KeyPhrase64 = String
+-- plain text SSH keyphrase
+newtype KeyPhrase =
+  KeyPhrase { getKeyPhrase :: BA.ScrubbedBytes
+            } deriving (Show, Generic, Eq)
+
+-- base64 encoded, encrypted SSH keyphrase
 newtype KeyPhrase64 =
   KeyPhrase64 { getKeyPhrase64 :: String
               } deriving (Show, Generic, Eq)
@@ -95,6 +105,9 @@ newtype Vault =
         } deriving (Show, Generic, Eq)
 instance JSON.FromJSON Vault
 instance JSON.ToJSON   Vault
+
+type HostHT  s = HashTable s UserName [SSHKey]
+type VaultHT s = HashTable s HostName (HostHT s)
 
 class (Eq a) => ToSBytes a where
   toSBytes       :: a -> BA.ScrubbedBytes

@@ -20,11 +20,13 @@ module SSHVault.Workflows
     , writeUserSSHKeys
     , confirmSSHAccess
     , purgeUserSSHKeys
+    , changeAESMasterKey
     )
     where
 
 import SSHVault.Vault
 import SSHVault.Vault.Config as Cfg
+import SSHVault.Vault.Queue
 import SSHVault.SBytes
 import SSHVault.Common
 
@@ -34,7 +36,7 @@ import Control.Exception (SomeException, catch)
 
 import Data.Set (fromList, intersection)
 import Data.Maybe (fromMaybe)
-import Data.List (intercalate)
+import Data.List (intercalate, group, foldl')
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Base64 as B64
 import qualified Data.Aeson as JSON
@@ -290,7 +292,7 @@ getAuthorizedKeys cfg m h un = do
 writeUserSSHKeys :: AESMasterKey -> Vault -> HostName -> UserName -> IO ([SSHKey], [String], [String])
 writeUserSSHKeys m v h un = do
   let sks = concatMap sshkeys $ getUser v h un
-  rs <- mapM (\sk -> do ec <-  writeSSHKey m sk; return (key_file sk,ec)) sks
+  rs  <- mapM  (\sk -> do ec <-  writeSSHKey m sk; return (key_file sk,ec)) sks
   rs' <- foldM (\ acc (fn,ec) -> case ec of
     ExitSuccess -> return (fst acc ++ [fn], snd acc)
     _           -> return (fst acc, snd acc ++ [fn])) ([],[]) rs
@@ -349,3 +351,38 @@ purgeUserSSHKeys cfg m h un = catch (
     (\(_ :: SomeException) ->
         putStrLn $ "failed to purge SSH keys for " ++ un ++ "@" ++ h
     )
+
+
+changePhrase64 :: KeyPhrase64 -> AESMasterKey -> AESMasterKey -> IO (Maybe KeyPhrase64)
+changePhrase64 ph m m2 =
+    case B64.decode $ toBytes ph of
+        Left _   -> return Nothing
+        Right s0 -> do
+            newph <- decryptAES m s0 >>= encryptAES m2
+            return $ Just KeyPhrase64 { getKeyPhrase64 = toString $ B64.encode $ toBytes newph }
+
+changeAESMasterKey1 :: AESMasterKey -> AESMasterKey -> QueueEntry -> IO QueueEntry
+changeAESMasterKey1 m m2 qe =
+    case qe of
+        HostUpdate h     -> return $ HostUpdate h
+        UserUpdate (h,u) -> do
+            newsshkeys <- mapM (\k -> do
+                                    ph <- changePhrase64 (phrase64 k) m m2
+                                    case ph of
+                                        Nothing  -> error "cannot change password on vault"
+                                        Just ph' -> return (k { phrase64 = ph'})) (sshkeys u)
+            return $ UserUpdate (h, (u { sshkeys = newsshkeys }))
+
+
+
+changeAESMasterKey :: Cfg.Config -> AESMasterKey -> AESMasterKey -> IO ()
+changeAESMasterKey cfg m m2 = do
+  (v :: Vault) <- decryptVault m (Cfg.file cfg)
+  q <- mapM (changeAESMasterKey1 m m2) (genUserUpdateQueue (vault v))
+  let h_us = fmap (foldl' (\ acc qe ->
+                            case qe of
+                                HostUpdate _     -> acc
+                                UserUpdate (h,u) -> (h, snd acc ++ [u])) ("",[])) (group q)
+  let ves = fmap (\(h,us) -> (head $ filter (\ve -> host ve == h) (vault v)) { users = us }) h_us
+  encryptVault m2 (Cfg.file cfg ++ ".NEW") (Vault { vault = ves })
+
