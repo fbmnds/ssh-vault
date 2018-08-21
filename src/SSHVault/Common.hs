@@ -18,7 +18,7 @@ module SSHVault.Common
   , randS
   , chmodF
   , chmodD
-  , chmodD_R
+  , chmodDR
   , take2nd
   , split4
   , substring
@@ -152,8 +152,8 @@ chmodF m fn = procD "chmod" [toString m, toString fn]
 chmodD :: (ToSBytes a, ToSBytes b) => a -> b -> IO ()
 chmodD m fn = procD "chmod" [toString m, toString fn]
 
-chmodD_R :: (ToSBytes a, ToSBytes b) => a -> b -> IO ()
-chmodD_R m fn = procD "chmod" ["-R", toString m, toString fn]
+chmodDR :: (ToSBytes a, ToSBytes b) => a -> b -> IO ()
+chmodDR m fn = procD "chmod" ["-R", toString m, toString fn]
 
 
 foreign import ccall "g_auth.h"

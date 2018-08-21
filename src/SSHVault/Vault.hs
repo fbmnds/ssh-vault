@@ -11,12 +11,14 @@ module SSHVault.Vault
     , getHosts
     , getUser
     , getUsers
+    , getUsers2
     , updateUsers
     , updateVaultEntry
     , updateVault
     )
 where
 
+import qualified SSHVault.Vault.Config as Cfg
 import           SSHVault.SBytes
 import           SSHVault.Common
 
@@ -43,6 +45,16 @@ getUsers v h = case filter (\ ve -> host ve == h) (vault v) of
   []   -> []
   [ve] -> users ve
   _    -> error $ "vault inconsistent: multiple entries for host " ++ h
+
+getUsers2 :: Cfg.Config -> AESMasterKey -> HostName -> UserName -> IO (Vault, User, [User])
+getUsers2 cfg m h un = do
+  (v :: Vault) <- decryptVault m (Cfg.file cfg)
+  let users' = getUsers v h
+  user' <- case getUser v h un of
+      [u''] -> return u''
+      _     -> error $ "missing user " ++ un
+  return (v, user', users')
+
 
 updateUsers :: [User] -> User -> [User]
 updateUsers us u' = filter (\u'' -> user u'' /= un) us ++ [u'] where un = user u'

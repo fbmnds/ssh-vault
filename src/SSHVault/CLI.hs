@@ -4,6 +4,7 @@ module SSHVault.CLI (cli)
     where
 
 import SSHVault.Common
+import SSHVault.SBytes
 import qualified SSHVault.Vault.Config as Cfg
 import qualified SSHVault.Workflows as WF
 
@@ -27,8 +28,9 @@ data Command
     | Init
     | Print
     | B64Encrypt
-    | SSHAdd String String
-    | RotateUserSSHKey String String
+    | SSHAdd HostName UserName
+    | RotateUserSSHKey HostName UserName
+    | PurgeUserSSHKeys HostName UserName
 
 
 
@@ -40,23 +42,28 @@ cli =
         cfg <- Cfg.genDefaultConfig
         (opts :: Opts) <- execParser optsParser
         case optCommand opts of
-            Insert s'         -> do
+            Init       -> WF.initVault cfg
+            Print      -> WF.printVault cfg
+            B64Encrypt -> WF.b64EncryptSSHKeyPassphrase
+            Insert s' -> do
                 m <- getAESMasterKeyU
                 WF.insertSSHKey WF.Insert cfg m s'
-            Replace s'        -> do
+            Replace s' -> do
                 m <- getAESMasterKeyU
                 WF.insertSSHKey WF.Replace cfg m s'
-            Init              -> WF.initVault cfg
-            Print             -> WF.printVault cfg
-            B64Encrypt        -> WF.b64EncryptSSHKeyPassphrase
-            SSHAdd h u'       -> do
+            SSHAdd h un -> do
                 m <- getAESMasterKeyU
-                WF.sshAdd cfg m h u'
-            RotateUserSSHKey h u' -> do
+                WF.sshAdd cfg m h un
+            RotateUserSSHKey h un -> do
                 m <- getAESMasterKeyU
                 withFile "/dev/shm/log" AppendMode $ \ hnd -> do
                     hDuplicateTo hnd stderr
-                    WF.rotateUserSSHKey cfg m h u'
+                    WF.rotateUserSSHKey cfg m h un
+            PurgeUserSSHKeys h un -> do
+                m <- getAESMasterKeyU
+                WF.purgeUserSSHKeys cfg m h un
+
+
   where
     optsParser :: ParserInfo Opts
     optsParser =
@@ -78,7 +85,8 @@ cli =
                    <> printCommand
                    <> b64encryptCommand
                    <> sshaddCommand
-                   <> rotateUserSSHKeyCommand)
+                   <> rotateUserSSHKeyCommand
+                   <> purgeUserSSHKeysCommand)
 
     insertCommand :: Mod CommandFields Command
     insertCommand =
@@ -133,10 +141,21 @@ cli =
     rotateUserSSHKeyCommand :: Mod CommandFields Command
     rotateUserSSHKeyCommand =
         command
-            "rotate-user-sshkey"
+            "rotate-key"
             (info rotateUserSSHKeyOptions (progDesc "Generate and upload new SSH key for user@host"))
     rotateUserSSHKeyOptions :: Parser Command
     rotateUserSSHKeyOptions =
         RotateUserSSHKey <$>
         strArgument (metavar "HOST" <> help "Target host for single user's SSH key rotation") <*>
         strArgument (metavar "USER" <> help "Target user for single user's SSH key rotation")
+
+    purgeUserSSHKeysCommand :: Mod CommandFields Command
+    purgeUserSSHKeysCommand =
+        command
+            "purge-keys"
+            (info purgeUserSSHKeysOptions (progDesc "Purge unused SSH keys for user@host"))
+    purgeUserSSHKeysOptions :: Parser Command
+    purgeUserSSHKeysOptions =
+        PurgeUserSSHKeys <$>
+        strArgument (metavar "HOST" <> help "Target host for single user's SSH key purge") <*>
+        strArgument (metavar "USER" <> help "Target user for single user's SSH key purge")

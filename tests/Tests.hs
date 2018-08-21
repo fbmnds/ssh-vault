@@ -131,7 +131,7 @@ test1 dcfg = do
 
 
 
--- test2 : confirm SSH access
+-- test2 : confirm SSH access via FFI call to ssh-add
 
 test2 :: IO ()
 test2 = do
@@ -150,7 +150,7 @@ test2 = do
 
 
 
--- test3 : test key synchronization WIP
+-- test3 : test key rotation
 
 test3 :: IO ()
 test3 = do
@@ -162,13 +162,15 @@ test3 = do
 
 
 
--- test 4 : test FFI call to ssh-add
+-- test4 : test purging keys
 
+test4 :: IO ()
 test4 = do
   (cfg,m,h,un) <- initTests
-  sshAdd (cfg { Cfg.ttl = 5 }) m h un
-  return ()
-
+  purgeUserSSHKeys cfg m h un
+  r <- confirmSSHAccess  cfg m h un
+  if r == "Access failed" then error "--- ERR, test4 : purging SSH keys failed"
+  else putStrLn "+++, OK test4 : successful purging SSH keys"
 
 
 -- | property check on string conversions (depricated)
@@ -226,6 +228,6 @@ main = do
   test1 dcfg
   shellD $ "rm " ++ Cfg.keystore dcfg ++ "/*"
   test2
---  test3
+  test3
   test4
   quickCheck prop_scrubbedbytes

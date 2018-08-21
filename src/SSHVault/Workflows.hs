@@ -19,6 +19,7 @@ module SSHVault.Workflows
     , getAuthorizedKeys
     , writeUserSSHKeys
     , confirmSSHAccess
+    , purgeUserSSHKeys
     )
     where
 
@@ -71,19 +72,12 @@ getSSHKeyphrase m u' = case B64.decode . toBytes $ phrase64 max' of
 rotateUserSSHKey :: Cfg.Config -> AESMasterKey -> HostName -> UserName -> IO ()
 rotateUserSSHKey cfg m h un = catch (
     do
-        --a_k <- getAuthorizedKeys cfg m h un
-        --print a_k
-        (v :: Vault) <- decryptVault m (Cfg.file cfg)
-        let users' = getUsers v h
-        user' <- case getUser v h un of
-            [u''] -> return u''
-            _     -> error $ "missing user " ++ un
+        (v, user', users') <- getUsers2 cfg m h un
         newkey <- genSSHKeyU cfg m h user'
         let newsshkeys   = sshkeys user' ++ [newkey]
             newusers     = updateUsers users' $ user' { sshkeys = newsshkeys }
             newve        = updateVaultEntry (head $ filter (\ve -> host ve == h) (vault v)) newusers
             newv         = updateVault v newve
-            -- npub          = key_file newkey ++ ".pub"
             port'        = show . port $ host_data newve
             new_a_k      = external_keys user' ++ [key_pub newkey]
             new_a_k_file = Cfg.dir cfg ++ "/authorized_keys"
@@ -94,9 +88,7 @@ rotateUserSSHKey cfg m h un = catch (
         chmodSSHFile new_a_k_file
         B.writeFile new_a_k_file .toBytes $ intercalate "\n" new_a_k
         -- use old key
-        -- shellD ("ssh-add -L" :: String)
         sshAdd (cfg { Cfg.ttl = 3 }) m h un
-        -- shellD ("ssh-add -L" :: String)
         -- use old key
         r <- procEC cmd
         case r of
@@ -280,7 +272,7 @@ readPubSSHFilesFromVault cfg m h un = do
 getAuthorizedKeys :: Cfg.Config -> AESMasterKey -> HostName -> UserName -> IO [T.Text]
 getAuthorizedKeys cfg m h un = do
   let cmd  = "ssh " ++ un ++ "@" ++ h ++ " 'cat ~/.ssh/authorized_keys'"
-  sshAdd (cfg { Cfg.ttl = 1 }) m h un
+  sshAdd (cfg { Cfg.ttl = 3 }) m h un
   r <- procEC cmd
   a_k <- case r of
       (ExitFailure _, o', e') -> do
@@ -343,3 +335,17 @@ confirmSSHAccess cfg m h un = do
                     (\p -> (length $ toString p, p))
                     (T.splitOn " " (toText ln))
 
+
+purgeUserSSHKeys :: Cfg.Config -> AESMasterKey -> HostName -> UserName -> IO ()
+purgeUserSSHKeys cfg m h un = catch (
+    do
+        (v, user', users') <- getUsers2 cfg m h un
+        let newsshkeys   = [maximum $ sshkeys user']
+            newusers     = updateUsers users' $ user' { sshkeys = newsshkeys }
+            newve        = updateVaultEntry (head $ filter (\ve -> host ve == h) (vault v)) newusers
+            newv         = updateVault v newve
+        encryptVault m (Cfg.file cfg) newv
+    )
+    (\(_ :: SomeException) ->
+        putStrLn $ "failed to purge SSH keys for " ++ un ++ "@" ++ h
+    )
